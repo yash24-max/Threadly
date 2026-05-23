@@ -4,6 +4,14 @@ import dev.threadly.core.common.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -12,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -101,6 +110,111 @@ public class ConversationController {
     return ResponseEntity.noContent().build();
   }
 
+  @PostMapping("/bulk-close")
+  @Operation(summary = "Bulk close multiple conversations")
+  @Transactional
+  public BulkOperationResult bulkClose(@Valid @RequestBody BulkIdsRequest req) {
+    UUID orgId = TenantContext.getOrgId();
+    int updated = 0;
+    for (UUID id : req.getIds()) {
+      conversationRepository.findByIdAndOrgId(id, orgId).ifPresent(conv -> {
+        conv.setStatus("CLOSED");
+        conversationRepository.save(conv);
+      });
+      updated++;
+    }
+    return new BulkOperationResult(updated);
+  }
+
+  @PostMapping("/bulk-assign")
+  @Operation(summary = "Bulk assign multiple conversations to an agent")
+  @Transactional
+  public BulkOperationResult bulkAssign(@Valid @RequestBody BulkAssignRequest req) {
+    UUID orgId = TenantContext.getOrgId();
+    int updated = 0;
+    for (UUID id : req.getIds()) {
+      Conversation conv = conversationRepository.findByIdAndOrgId(id, orgId).orElse(null);
+      if (conv != null) {
+        String meta = conv.getMetadata();
+        // Store assignedAgentId in metadata JSON
+        String updatedMeta = meta.endsWith("}") && meta.length() > 2
+            ? meta.substring(0, meta.length() - 1) + ",\"assignedAgentId\":\""
+                + req.getAgentId() + "\"}"
+            : "{\"assignedAgentId\":\"" + req.getAgentId() + "\"}";
+        conv.setMetadata(updatedMeta);
+        conv.setStatus("ASSIGNED");
+        conversationRepository.save(conv);
+        updated++;
+      }
+    }
+    return new BulkOperationResult(updated);
+  }
+
+  @GetMapping("/export")
+  @Operation(summary = "Stream conversations as CSV download")
+  public void exportCsv(
+      @RequestParam(required = false) UUID botId,
+      @RequestParam(required = false) String from,
+      @RequestParam(required = false) String to,
+      HttpServletResponse response) throws IOException {
+    UUID orgId = TenantContext.getOrgId();
+    Instant fromInstant = parseInstantOrMin(from);
+    Instant toInstant = parseInstantOrMax(to);
+
+    response.setContentType("text/csv");
+    response.setHeader("Content-Disposition", "attachment; filename=\"conversations.csv\"");
+
+    PrintWriter writer = response.getWriter();
+    writer.println("id,botId,visitorId,status,channel,createdAt,updatedAt,messageCount");
+
+    List<Conversation> conversations =
+        botId != null
+            ? conversationRepository.findByOrgIdAndBotIdAndCreatedAtBetween(
+                orgId, botId, fromInstant, toInstant)
+            : conversationRepository.findByOrgIdAndCreatedAtBetween(orgId, fromInstant, toInstant);
+
+    for (Conversation c : conversations) {
+      long msgCount = messageRepository.countByConversationId(c.getId());
+      writer.printf(
+          "%s,%s,%s,%s,%s,%s,%s,%d%n",
+          c.getId(),
+          c.getBot().getId(),
+          escapeCsv(c.getVisitorId()),
+          c.getStatus(),
+          c.getChannel(),
+          c.getCreatedAt(),
+          c.getUpdatedAt(),
+          msgCount);
+    }
+    writer.flush();
+  }
+
+  private Instant parseInstantOrMin(String s) {
+    if (s == null || s.isBlank()) return Instant.EPOCH;
+    try {
+      return Instant.parse(s);
+    } catch (DateTimeParseException e) {
+      return Instant.EPOCH;
+    }
+  }
+
+  private Instant parseInstantOrMax(String s) {
+    if (s == null || s.isBlank()) return Instant.now().plusSeconds(86400L * 365 * 100);
+    try {
+      return Instant.parse(s);
+    } catch (DateTimeParseException e) {
+      return Instant.now();
+    }
+  }
+
+  private String escapeCsv(String value) {
+    if (value == null) return "";
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
   // ── DTOs ──────────────────────────────────────────────────────────
 
   @Data
@@ -126,6 +240,22 @@ public class ConversationController {
 
   @Data
   public static class AgentMessageRequest { private String content; }
+
+  @Data
+  public static class BulkIdsRequest {
+    @NotEmpty private List<UUID> ids;
+  }
+
+  @Data
+  public static class BulkAssignRequest {
+    @NotEmpty private List<UUID> ids;
+    @NotNull private UUID agentId;
+  }
+
+  @Data
+  public static class BulkOperationResult {
+    private final int affected;
+  }
 
   private ConvSummary toSummary(Conversation c) {
     ConvSummary s = new ConvSummary();

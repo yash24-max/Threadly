@@ -126,3 +126,11 @@ resilience4j:
         retry-exceptions:
           - java.io.IOException
           - org.springframework.web.reactive.function.client.WebClientRequestException
+      webhook-delivery:
+        max-attempts: 3
+        wait-duration: 2s
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - java.io.IOException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+          - java.lang.RuntimeException

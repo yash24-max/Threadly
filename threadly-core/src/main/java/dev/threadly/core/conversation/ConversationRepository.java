@@ -1,5 +1,6 @@
 package dev.threadly.core.conversation;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,4 +23,24 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
 
   @Query(value = "SELECT COALESCE(COUNT(m.id), 0) FROM messages m JOIN conversations c ON m.conversation_id = c.id WHERE c.org_id = :orgId", nativeQuery = true)
   long sumMessageCountByOrgId(@Param("orgId") UUID orgId);
+
+  @Query("SELECT c FROM Conversation c WHERE c.orgId = :orgId AND c.bot.id = :botId AND c.createdAt BETWEEN :from AND :to ORDER BY c.createdAt ASC")
+  List<Conversation> findByOrgIdAndBotIdAndCreatedAtBetween(
+      @Param("orgId") UUID orgId,
+      @Param("botId") UUID botId,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
+
+  @Query("SELECT c FROM Conversation c WHERE c.orgId = :orgId AND c.createdAt BETWEEN :from AND :to ORDER BY c.createdAt ASC")
+  List<Conversation> findByOrgIdAndCreatedAtBetween(
+      @Param("orgId") UUID orgId,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
+
+  @Query("SELECT COUNT(c) FROM Conversation c WHERE c.orgId = :orgId AND c.bot.id = :botId")
+  long countByOrgIdAndBotId(@Param("orgId") UUID orgId, @Param("botId") UUID botId);
+
+  @Query("SELECT COUNT(c) FROM Conversation c WHERE c.orgId = :orgId AND c.bot.id = :botId AND c.status = :status")
+  long countByOrgIdAndBotIdAndStatus(
+      @Param("orgId") UUID orgId, @Param("botId") UUID botId, @Param("status") String status);
 }
