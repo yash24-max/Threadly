@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Threadly Widget Test</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 80px auto; padding: 0 24px; }
+    h1 { font-size: 24px; font-weight: 600; }
+    p { color: #666; }
+    .config { background: #f4f4f5; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 13px; }
+    label { font-size: 13px; font-weight: 500; display: block; margin-bottom: 4px; }
+    input { border: 1px solid #d4d4d8; border-radius: 6px; padding: 6px 10px; width: 300px; font-size: 13px; }
+    button { margin-top: 12px; background: #4F46E5; color: white; border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Threadly Widget Test Page</h1>
+  <p>Use this page to test your embedded widget locally. Configure the bot ID below then click "Load Widget".</p>
+
+  <div style="margin: 32px 0;">
+    <label for="bot-id">Bot ID</label>
+    <input id="bot-id" type="text" placeholder="your-bot-id-here" />
+    <br />
+    <label for="api-url" style="margin-top: 12px;">API base URL</label>
+    <input id="api-url" type="text" value="http://localhost:8080" />
+    <br />
+    <button onclick="loadWidget()">Load Widget</button>
+  </div>
+
+  <div class="config" id="embed-code" style="display:none;">
+    &lt;!-- Paste this on your website --&gt;<br/>
+    &lt;script src="http://localhost:3000/widget.js" data-bot="<span id="bot-id-display"></span>" async&gt;&lt;/script&gt;
+  </div>
+
+  <script>
+    function loadWidget() {
+      const botId = document.getElementById('bot-id').value.trim();
+      const apiUrl = document.getElementById('api-url').value.trim();
+      if (!botId) { alert('Enter a bot ID'); return; }
+
+      // Remove existing widget
+      const existing = document.getElementById('threadly-widget-script');
+      if (existing) existing.remove();
+      if (window.Threadly) window.Threadly.destroy?.();
+
+      // Inject widget
+      const script = document.createElement('script');
+      script.id = 'threadly-widget-script';
+      script.src = 'http://localhost:8080/widget/embed.js';
+      script.setAttribute('data-bot', botId);
+      script.setAttribute('data-api-url', apiUrl);
+      script.setAttribute('data-color', '#4F46E5');
+      script.async = true;
+      document.body.appendChild(script);
+
+      // Show embed code
+      document.getElementById('bot-id-display').textContent = botId;
+      document.getElementById('embed-code').style.display = 'block';
+    }
+  </script>
+</body>
+</html>

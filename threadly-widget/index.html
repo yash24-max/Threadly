@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Threadly Widget — Dev</title>
+    <style>
+      body { font-family: sans-serif; max-width: 800px; margin: 60px auto; padding: 0 24px; color: #333; }
+      h1 { font-size: 28px; margin-bottom: 8px; }
+      p { color: #666; margin-bottom: 24px; }
+      pre { background: #f5f5f5; padding: 16px; border-radius: 8px; font-size: 13px; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <h1>Threadly Widget Dev</h1>
+    <p>This page loads the widget in dev mode. Edit <code>src/widget.ts</code> to see changes.</p>
+    <pre>&lt;script
+  src="https://cdn.threadly.dev/widget.js"
+  data-bot="YOUR_BOT_ID"
+  data-api-url="http://localhost:8080"
+  data-centrifugo-url="ws://localhost:8000/connection/websocket"
+  data-accent="#4f46e5"
+  data-position="bottom-right"
+  data-greeting="Hi! How can I help you today?"
+  data-bot-name="Support"
+&gt;&lt;/script&gt;</pre>
+
+    <script
+      type="module"
+      src="/src/widget.ts"
+      data-bot="demo-bot-id"
+      data-api-url="http://localhost:8080"
+      data-centrifugo-url="ws://localhost:8000/connection/websocket"
+      data-accent="#4f46e5"
+      data-greeting="Hi! I'm your AI assistant. How can I help you today?"
+      data-bot-name="ThreadlyBot"
+    ></script>
+  </body>
+</html>
