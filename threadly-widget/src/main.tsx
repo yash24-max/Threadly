@@ -4,11 +4,17 @@ import { useEffect, useRef, useState } from "preact/hooks"
 import { ChatPanel } from "./ui/ChatPanel"
 import type { WidgetConfig } from "./types"
 
-interface AppProps {
-  config: WidgetConfig
+interface MountOptions {
+  onNewMessage?: () => void
+  onPanelOpen?: () => void
 }
 
-function App({ config }: AppProps) {
+interface AppProps {
+  config: WidgetConfig
+  options: MountOptions
+}
+
+function App({ config, options }: AppProps) {
   const [open, setOpen] = useState(false)
   const [entering, setEntering] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -16,6 +22,7 @@ function App({ config }: AppProps) {
   function openPanel() {
     setOpen(true)
     setEntering(true)
+    options.onPanelOpen?.()
     setTimeout(() => setEntering(false), 320)
   }
 
@@ -23,7 +30,7 @@ function App({ config }: AppProps) {
     setOpen(false)
   }
 
-  // When panel opens, add "entering" class for mobile slide-up animation
+  // Mobile slide-up animation class
   useEffect(() => {
     const panel = document.getElementById("threadly-panel")
     if (panel && entering) panel.classList.add("entering")
@@ -44,7 +51,7 @@ function App({ config }: AppProps) {
 
   return (
     <>
-      {/* Launcher button */}
+      {/* Launcher button — badge is injected by widget.ts into this element */}
       <button
         id="threadly-launcher"
         onClick={() => (open ? closePanel() : openPanel())}
@@ -57,16 +64,22 @@ function App({ config }: AppProps) {
       </button>
 
       {/* Chat panel */}
-      {open && <ChatPanel config={config} onClose={closePanel} />}
+      {open && (
+        <ChatPanel
+          config={config}
+          onClose={closePanel}
+          onNewMessage={options.onNewMessage}
+        />
+      )}
     </>
   )
 }
 
-export function mount(config: WidgetConfig) {
+export function mount(config: WidgetConfig, options: MountOptions = {}): void {
   const root = document.createElement("div")
   root.id = "threadly-root"
   root.setAttribute("role", "region")
   root.setAttribute("aria-label", "Chat widget")
   document.body.appendChild(root)
-  render(<App config={config} />, root)
+  render(<App config={config} options={options} />, root)
 }
