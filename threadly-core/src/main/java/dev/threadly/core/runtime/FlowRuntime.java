@@ -113,8 +113,19 @@ public class FlowRuntime {
 
       NodeExecutionResult result = executor.execute(node, session, conversation, bot, orgId);
 
+      if (result.getJumpToNodeId() != null) {
+        // Switch node — jump directly to a specific node
+        nodeId = result.getJumpToNodeId();
+        continue;
+      }
       if (result.isPause()) {
         session.setStatus("waiting");
+        if (result.getWaitUntil() != null) {
+          // Delay node — store resume time in session variables
+          Map<String, Object> vars = session.getVariables();
+          vars.put("resume_at", result.getWaitUntil().toString());
+          session.setVariables(vars);
+        }
         break;
       }
       if (result.isHandoff()) {

@@ -22,6 +22,11 @@ public final class TenantContext {
     return orgId;
   }
 
+  /** Returns the org ID or {@code null} if no tenant context is set. Does not throw. */
+  public static UUID getOrgIdOrNull() {
+    return CURRENT_ORG.get();
+  }
+
   public static UUID getUserId() {
     return CURRENT_USER.get();
   }

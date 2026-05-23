@@ -1,11 +1,13 @@
 package dev.threadly.core.flow;
 
 import dev.threadly.core.common.TenantContext;
-import dev.threadly.core.flow.FlowController.*;
+import dev.threadly.core.flow.FlowController.FlowResponse;
+import dev.threadly.core.flow.FlowController.FlowVersionResponse;
 import dev.threadly.core.workspace.Bot;
 import dev.threadly.core.workspace.BotRepository;
 import dev.threadly.core.workspace.OrgRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -70,6 +72,36 @@ public class FlowService {
         .findByFlowIdAndVersionNum(flow.getId(), versionNum)
         .orElseThrow(() -> new EntityNotFoundException("Version " + versionNum + " not found"));
     flow.setDraftJson(version.getSnapshotJson());
+    return toResponse(flowRepository.save(flow));
+  }
+
+  public byte[] exportFlow(UUID botId, UUID flowId) {
+    UUID orgId = TenantContext.getOrgId();
+    Flow flow = flowRepository.findByIdAndBotIdAndOrgId(flowId, botId, orgId)
+        .orElseThrow(() -> new EntityNotFoundException("Flow not found: " + flowId));
+    String json = flow.getDraftJson() != null ? flow.getDraftJson() : "{}";
+    return json.getBytes(StandardCharsets.UTF_8);
+  }
+
+  @Transactional
+  public FlowResponse importFlow(UUID botId, String flowJson) {
+    validateFlowJson(flowJson);
+    UUID orgId = TenantContext.getOrgId();
+    // If a flow already exists for this bot, replace the draft (import = new draft)
+    Flow flow = flowRepository.findByBotIdAndOrgId(botId, orgId)
+        .map(existing -> {
+          existing.setDraftJson(flowJson);
+          return existing;
+        })
+        .orElseGet(() -> {
+          Bot bot = botRepository.findByIdAndOrgId(botId, orgId)
+              .orElseThrow(() -> new EntityNotFoundException("Bot not found: " + botId));
+          return Flow.builder()
+              .bot(bot)
+              .org(orgRepository.getReferenceById(orgId))
+              .draftJson(flowJson)
+              .build();
+        });
     return toResponse(flowRepository.save(flow));
   }
 

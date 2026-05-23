@@ -33,7 +33,9 @@ public class TenantFilterAspect {
 
     Session hibernateSession = entityManager.unwrap(Session.class);
     try {
-      for (String filterName : new String[]{"orgFilter", "orgFilterKb", "orgFilterBot"}) {
+      for (String filterName : new String[]{
+          "orgFilter", "orgFilterKb", "orgFilterBot",
+          "orgFilterApiKey", "orgFilterWebhook", "orgFilterCredential"}) {
         try {
           hibernateSession.enableFilter(filterName).setParameter("orgId", orgId);
         } catch (Exception ignored) {
@@ -42,9 +44,11 @@ public class TenantFilterAspect {
       }
       return pjp.proceed();
     } finally {
-      try { hibernateSession.disableFilter("orgFilter"); } catch (Exception ignored) {}
-      try { hibernateSession.disableFilter("orgFilterKb"); } catch (Exception ignored) {}
-      try { hibernateSession.disableFilter("orgFilterBot"); } catch (Exception ignored) {}
+      for (String filterName : new String[]{
+          "orgFilter", "orgFilterKb", "orgFilterBot",
+          "orgFilterApiKey", "orgFilterWebhook", "orgFilterCredential"}) {
+        try { hibernateSession.disableFilter(filterName); } catch (Exception ignored) {}
+      }
     }
   }
 }

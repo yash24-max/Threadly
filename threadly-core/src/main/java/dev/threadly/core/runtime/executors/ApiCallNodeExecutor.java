@@ -1,28 +1,42 @@
 package dev.threadly.core.runtime.executors;
 
 import dev.threadly.core.conversation.Conversation;
-import dev.threadly.core.runtime.*;
+import dev.threadly.core.runtime.FlowGraph;
+import dev.threadly.core.runtime.NodeExecutionResult;
+import dev.threadly.core.runtime.NodeExecutor;
+import dev.threadly.core.runtime.Session;
 import dev.threadly.core.workspace.Bot;
+import dev.threadly.core.workspace.BotCredentialRepository;
+import dev.threadly.core.workspace.CredentialService;
+import java.time.Duration;
+import java.util.Map;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.time.Duration;
-import java.util.Map;
-import java.util.UUID;
-
 /**
- * Executes an external HTTP API call and stores the response
- * in the session variable specified by {@code responseVariable}.
+ * Executes an external HTTP API call and stores the response in the session variable specified by
+ * {@code responseVariable}.
+ *
+ * <p>Supports credential injection via the {@code "credential"} field in node data.
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class ApiCallNodeExecutor implements NodeExecutor {
 
-  private final WebClient webClient = WebClient.builder()
-      .codecs(c -> c.defaultCodecs().maxInMemorySize(512 * 1024))
-      .build();
+  private final BotCredentialRepository credentialRepository;
+  private final CredentialService credentialService;
+  private final WebClient.Builder webClientBuilder;
+
+  private WebClient getWebClient() {
+    return webClientBuilder
+        .codecs(c -> c.defaultCodecs().maxInMemorySize(512 * 1024))
+        .build();
+  }
 
   @Override
   public String nodeType() { return "api_call"; }
@@ -46,7 +60,19 @@ public class ApiCallNodeExecutor implements NodeExecutor {
     }
 
     try {
-      WebClient.RequestBodySpec spec = webClient.method(HttpMethod.valueOf(method)).uri(url);
+      WebClient.RequestBodySpec spec = getWebClient().method(HttpMethod.valueOf(method)).uri(url);
+
+      // Inject named credential as Bearer token if specified
+      String credentialName = (String) data.get("credential");
+      if (credentialName != null && !credentialName.isBlank()) {
+        credentialRepository
+            .findByBotIdAndOrgIdAndName(bot.getId(), orgId, credentialName)
+            .ifPresent(
+                cred -> {
+                  String decryptedValue = credentialService.decrypt(cred.getEncryptedValue());
+                  spec.header("Authorization", "Bearer " + decryptedValue);
+                });
+      }
 
       // Add custom headers
       Object headers = data.get("headers");

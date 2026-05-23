@@ -1,5 +1,6 @@
 package dev.threadly.core.runtime;
 
+import java.time.Instant;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -19,6 +20,17 @@ public class NodeExecutionResult {
   /** Handoff to human agent triggered. */
   private final boolean handoff;
 
+  /**
+   * Wait until this timestamp before resuming. Used by the delay node. Non-null signals a
+   * wait-until state.
+   */
+  private final Instant waitUntil;
+
+  /**
+   * Jump directly to a specific node ID, bypassing edge traversal. Used by the switch node.
+   */
+  private final String jumpToNodeId;
+
   public static NodeExecutionResult next() {
     return NodeExecutionResult.builder().edgeHandle("default").build();
   }
@@ -37,5 +49,13 @@ public class NodeExecutionResult {
 
   public static NodeExecutionResult handoff() {
     return NodeExecutionResult.builder().handoff(true).build();
+  }
+
+  public static NodeExecutionResult waitUntil(Instant resumeAt) {
+    return NodeExecutionResult.builder().waitUntil(resumeAt).pause(true).build();
+  }
+
+  public static NodeExecutionResult jumpTo(String nodeId) {
+    return NodeExecutionResult.builder().jumpToNodeId(nodeId).build();
   }
 }

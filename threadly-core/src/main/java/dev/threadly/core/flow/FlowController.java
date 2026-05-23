@@ -3,12 +3,17 @@ package dev.threadly.core.flow;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/v1/bots/{botId}/flow")
@@ -46,6 +51,27 @@ public class FlowController {
   @Operation(summary = "Rollback to a specific version")
   public FlowResponse rollback(@PathVariable UUID botId, @PathVariable int versionNum) {
     return flowService.rollback(botId, versionNum);
+  }
+
+  @GetMapping("/{flowId}/export")
+  @Operation(summary = "Export a flow as a JSON file download")
+  public ResponseEntity<byte[]> export(@PathVariable UUID botId, @PathVariable UUID flowId) {
+    byte[] content = flowService.exportFlow(botId, flowId);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    headers.setContentDisposition(
+        ContentDisposition.attachment().filename("flow-" + flowId + ".json").build());
+    return ResponseEntity.ok().headers(headers).body(content);
+  }
+
+  @PostMapping("/import")
+  @Operation(summary = "Import a flow from a JSON file upload")
+  public ResponseEntity<FlowResponse> importFlow(
+      @PathVariable UUID botId,
+      @RequestParam("file") MultipartFile file) throws IOException {
+    String json = new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+    FlowResponse response = flowService.importFlow(botId, json);
+    return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(response);
   }
 
   // ── DTOs ─────────────────────────────────────────────────────────
