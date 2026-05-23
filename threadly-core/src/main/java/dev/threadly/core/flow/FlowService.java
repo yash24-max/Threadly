@@ -1,5 +1,6 @@
 package dev.threadly.core.flow;
 
+import dev.threadly.core.common.AuditService;
 import dev.threadly.core.common.TenantContext;
 import dev.threadly.core.flow.FlowController.FlowResponse;
 import dev.threadly.core.flow.FlowController.FlowVersionResponse;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import dev.threadly.core.flow.FlowSchemaValidator.ValidationResult;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +26,8 @@ public class FlowService {
   private final FlowVersionRepository flowVersionRepository;
   private final BotRepository botRepository;
   private final OrgRepository orgRepository;
+  private final FlowSchemaValidator flowSchemaValidator;
+  private final AuditService auditService;
 
   public FlowResponse getDraftFlow(UUID botId) {
     Flow flow = getOrCreateFlow(botId);
@@ -32,6 +36,7 @@ public class FlowService {
 
   @Transactional
   public FlowResponse saveDraft(UUID botId, String flowJson) {
+    runSchemaValidation(flowJson);
     Flow flow = getOrCreateFlow(botId);
     flow.setDraftJson(flowJson);
     return toResponse(flowRepository.save(flow));
@@ -40,7 +45,7 @@ public class FlowService {
   @Transactional
   public FlowResponse publishFlow(UUID botId) {
     Flow flow = getOrCreateFlow(botId);
-    validateFlowJson(flow.getDraftJson());
+    runSchemaValidation(flow.getDraftJson());
     flow.setPublishedJson(flow.getDraftJson());
     flow.setPublishedAt(Instant.now());
     flowRepository.save(flow);
@@ -55,7 +60,9 @@ public class FlowService {
         .publishedBy(TenantContext.getUserId())
         .build();
     flowVersionRepository.save(version);
-    return toResponse(flow);
+    FlowResponse published = toResponse(flow);
+    auditService.log("FLOW_PUBLISHED", "FLOW", flow.getId(), null, published);
+    return published;
   }
 
   public List<FlowVersionResponse> listVersions(UUID botId) {
@@ -72,7 +79,10 @@ public class FlowService {
         .findByFlowIdAndVersionNum(flow.getId(), versionNum)
         .orElseThrow(() -> new EntityNotFoundException("Version " + versionNum + " not found"));
     flow.setDraftJson(version.getSnapshotJson());
-    return toResponse(flowRepository.save(flow));
+    FlowResponse rolled = toResponse(flowRepository.save(flow));
+    auditService.log("FLOW_ROLLED_BACK", "FLOW", flow.getId(),
+        null, java.util.Map.of("versionNum", versionNum));
+    return rolled;
   }
 
   public byte[] exportFlow(UUID botId, UUID flowId) {
@@ -85,7 +95,7 @@ public class FlowService {
 
   @Transactional
   public FlowResponse importFlow(UUID botId, String flowJson) {
-    validateFlowJson(flowJson);
+    runSchemaValidation(flowJson);
     UUID orgId = TenantContext.getOrgId();
     // If a flow already exists for this bot, replace the draft (import = new draft)
     Flow flow = flowRepository.findByBotIdAndOrgId(botId, orgId)
@@ -124,30 +134,13 @@ public class FlowService {
   }
 
   /**
-   * Validates that flow JSON is well-formed and contains at least a "start" node.
-   * Throws IllegalArgumentException if invalid.
+   * Validates flow JSON using the full schema validator.
+   * Throws {@link FlowValidationException} if validation fails.
    */
-  private void validateFlowJson(String json) {
-    if (json == null || json.isBlank()) {
-      throw new IllegalArgumentException("Cannot publish an empty flow.");
-    }
-    try {
-      com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-      com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(json);
-      com.fasterxml.jackson.databind.JsonNode nodes = root.get("nodes");
-      if (nodes == null || !nodes.isArray() || nodes.size() == 0) {
-        throw new IllegalArgumentException("Flow must contain at least one node.");
-      }
-      boolean hasStart = false;
-      for (com.fasterxml.jackson.databind.JsonNode node : nodes) {
-        com.fasterxml.jackson.databind.JsonNode type = node.path("type");
-        if ("start".equals(type.asText())) { hasStart = true; break; }
-      }
-      if (!hasStart) {
-        throw new IllegalArgumentException("Flow must contain a Start node.");
-      }
-    } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-      throw new IllegalArgumentException("Flow JSON is malformed: " + e.getMessage());
+  private void runSchemaValidation(String json) {
+    ValidationResult result = flowSchemaValidator.validate(json);
+    if (!result.valid()) {
+      throw new FlowValidationException(result.errors());
     }
   }
 

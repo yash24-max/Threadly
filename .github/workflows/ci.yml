@@ -59,13 +59,14 @@ jobs:
         run: ./mvnw spotless:check -q
 
       - name: Build + test
-        run: ./mvnw verify -B
+        run: ./mvnw test -Dsurefire.useFile=false -B
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/threadly_test
           SPRING_DATASOURCE_USERNAME: threadly
           SPRING_DATASOURCE_PASSWORD: threadly
           SPRING_REDIS_HOST: localhost
           SPRING_REDIS_PORT: 6379
+          SPRING_REDIS_PASSWORD: ""
 
       - name: Upload test reports
         if: always()
@@ -104,7 +105,7 @@ jobs:
         run: mypy app --strict --ignore-missing-imports
 
       - name: Tests
-        run: pytest -q
+        run: python -m pytest tests/ -v --tb=short
 
   # ─────────────────────────────────────────────
   # threadly-web (Next.js 15 / Node 20)
@@ -129,11 +130,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint (Biome)
-        run: npx biome check .
-
       - name: Type check
         run: npx tsc --noEmit
+
+      - name: Lint (Biome)
+        run: npx biome check .
 
       - name: Build
         run: npm run build
@@ -166,6 +167,9 @@ jobs:
 
       - name: Type check
         run: npx tsc --noEmit
+
+      - name: Unit tests (Vitest)
+        run: npx vitest run
 
       - name: Build
         run: npm run build

@@ -171,7 +171,24 @@ function Canvas({ initialDefinition, onChange }: Props) {
       const type = e.dataTransfer.getData("application/reactflow")
       if (!type || !reactFlowInstance) return
       const position = reactFlowInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY })
-      setNodes((nds) => [...nds, { id: newId(type), type, position, data: {} }])
+      // Grab defaultData that NodePanel serialised in the drag event
+      let defaultData: Record<string, unknown> = {}
+      try {
+        const raw = e.dataTransfer.getData("application/reactflow-data")
+        if (raw) defaultData = JSON.parse(raw)
+      } catch {}
+      setNodes((nds) => [...nds, { id: newId(type), type, position, data: defaultData }])
+    },
+    [reactFlowInstance, setNodes]
+  )
+
+  // Click-to-add: called by NodePanel when user clicks a node in the catalog
+  const handleAddNode = useCallback(
+    (type: string, defaultData: Record<string, unknown>) => {
+      const viewport = reactFlowInstance?.getViewport()
+      const x = viewport ? -viewport.x / viewport.zoom + 300 : 300
+      const y = viewport ? -viewport.y / viewport.zoom + 200 : 200
+      setNodes((nds) => [...nds, { id: newId(type), type, position: { x, y }, data: defaultData }])
     },
     [reactFlowInstance, setNodes]
   )
@@ -205,7 +222,7 @@ function Canvas({ initialDefinition, onChange }: Props) {
 
   return (
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-      <NodePanel />
+      <NodePanel onAddNode={handleAddNode} />
       <div ref={reactFlowWrapper} style={{ flex: 1 }}>
         <ReactFlow
           nodes={nodesWithBadges}
@@ -245,7 +262,7 @@ function Canvas({ initialDefinition, onChange }: Props) {
           />
         </ReactFlow>
       </div>
-      <PropertiesPanel node={selectedNode} onChange={handleNodeDataChange} />
+      <PropertiesPanel selectedNode={selectedNode} onUpdateNode={handleNodeDataChange} />
     </div>
   )
 }

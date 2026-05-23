@@ -194,6 +194,13 @@
       <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
+    <!-- GenericContainer needed for Redis in integration tests -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

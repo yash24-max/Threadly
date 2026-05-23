@@ -1,85 +1,131 @@
-# Threadly — top-level orchestration
-# Run `make help` for all targets.
+.PHONY: up down logs restart build-all test-all lint-all fmt-all codegen db-shell gen-keys deploy-railway
 
-.PHONY: help up down logs ps restart clean \
-        bootstrap seed codegen test \
-        core-run ai-run web-run widget-run \
-        core-test ai-test web-test \
-        fmt lint
+# ── Local Dev ────────────────────────────────────────────────────────────────
+up:
+	docker compose -f infra/docker-compose.yml up -d --build
 
-COMPOSE := docker compose -f infra/docker-compose.yml
+down:
+	docker compose -f infra/docker-compose.yml down
 
-help: ## Show this help
-	@awk 'BEGIN {FS = ":.*##"; printf "Threadly targets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+logs:
+	docker compose -f infra/docker-compose.yml logs -f $(s)
 
-# ── Infra ────────────────────────────────────────────────────────────
-up: ## Boot full local stack (postgres, redis, qdrant, centrifugo, minio, services)
-	$(COMPOSE) up -d --build
-	@echo "→ web:        http://localhost:3000"
-	@echo "→ core:       http://localhost:8080"
-	@echo "→ ai:         http://localhost:8081"
-	@echo "→ centrifugo: http://localhost:8000"
-	@echo "→ grafana:    http://localhost:3001"
+restart:
+	docker compose -f infra/docker-compose.yml restart $(s)
 
-down: ## Stop the stack
-	$(COMPOSE) down
+ps:
+	docker compose -f infra/docker-compose.yml ps
 
-logs: ## Tail logs from all services
-	$(COMPOSE) logs -f --tail=100
+# ── Build ────────────────────────────────────────────────────────────────────
+build-core:
+	cd threadly-core && ./mvnw clean package -DskipTests -q
 
-ps: ## Show container status
-	$(COMPOSE) ps
+build-ai:
+	docker build -t threadly-ai:latest threadly-ai/
 
-restart: down up ## Restart everything
+build-web:
+	cd threadly-web && npm run build
 
-clean: ## Stop + remove volumes (DESTRUCTIVE — wipes DB)
-	$(COMPOSE) down -v
+build-widget:
+	cd threadly-widget && npm run build
 
-# ── First-time setup ─────────────────────────────────────────────────
-bootstrap: ## Install all language toolchains and prime caches
-	./scripts/bootstrap.sh
+build-all: build-core build-ai build-web build-widget
+	@echo "All services built ✓"
 
-seed: ## Insert demo org + bot for local testing
-	./scripts/seed-demo-bot.sh
+# ── Test ─────────────────────────────────────────────────────────────────────
+test-core:
+	cd threadly-core && ./mvnw test -Dsurefire.useFile=false
 
-# ── Codegen ─────────────────────────────────────────────────────────
-codegen: ## Regenerate typed API hooks from core OpenAPI
-	./scripts/codegen-api.sh
+test-ai:
+	cd threadly-ai && python -m pytest tests/ -v --tb=short
 
-# ── Per-service run (for hot-reload dev outside Docker) ─────────────
-core-run: ## Run threadly-core via Maven (hot reload)
-	cd threadly-core && ./mvnw spring-boot:run
+test-web:
+	cd threadly-web && npx vitest run
 
-ai-run: ## Run threadly-ai via uvicorn (hot reload)
-	cd threadly-ai && uv run uvicorn app.main:app --reload --port 8081
+test-widget:
+	cd threadly-widget && npx vitest run
 
-web-run: ## Run threadly-web via Next.js dev server
-	cd threadly-web && pnpm dev
+test-e2e:
+	cd threadly-web && npx playwright test
 
-widget-run: ## Run threadly-widget Vite dev server
-	cd threadly-widget && pnpm dev
+test-all: test-core test-ai test-web test-widget
+	@echo "All tests passed ✓"
 
-# ── Tests ───────────────────────────────────────────────────────────
-test: core-test ai-test web-test ## Run all test suites
-
-core-test:
-	cd threadly-core && ./mvnw test
-
-ai-test:
-	cd threadly-ai && uv run pytest
-
-web-test:
-	cd threadly-web && pnpm test
-
-# ── Lint / format ───────────────────────────────────────────────────
-fmt: ## Format all code
-	cd threadly-core && ./mvnw spotless:apply
-	cd threadly-ai && uv run ruff format .
-	cd threadly-web && pnpm biome format --write .
-	cd threadly-widget && pnpm biome format --write .
-
-lint: ## Lint all code
+# ── Code Quality ─────────────────────────────────────────────────────────────
+lint-core:
 	cd threadly-core && ./mvnw spotless:check
-	cd threadly-ai && uv run ruff check . && uv run mypy app
-	cd threadly-web && pnpm biome check .
-	cd threadly-widget && pnpm biome check .
+
+fmt-core:
+	cd threadly-core && ./mvnw spotless:apply
+
+lint-ai:
+	cd threadly-ai && ruff check . && mypy app/ --strict
+
+fmt-ai:
+	cd threadly-ai && ruff format .
+
+lint-web:
+	cd threadly-web && npx tsc --noEmit && npx biome check .
+
+fmt-web:
+	cd threadly-web && npx biome format --write .
+
+lint-widget:
+	cd threadly-widget && npx tsc --noEmit
+
+lint-all: lint-core lint-ai lint-web lint-widget
+	@echo "All lint checks passed ✓"
+
+# ── Database ──────────────────────────────────────────────────────────────────
+db-shell:
+	docker compose -f infra/docker-compose.yml exec postgres psql -U threadly -d threadly
+
+db-migrate:
+	docker compose -f infra/docker-compose.yml exec threadly-core ./mvnw flyway:info
+
+db-reset:
+	docker compose -f infra/docker-compose.yml exec postgres psql -U threadly -d threadly -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+	@echo "Database reset. Run 'make up' to re-apply migrations."
+
+# ── Code Generation ───────────────────────────────────────────────────────────
+codegen:
+	cd threadly-web && bash ../scripts/codegen-api.sh
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+gen-keys:
+	mkdir -p infra/keys
+	openssl genrsa -out infra/keys/private.pem 2048
+	openssl rsa -in infra/keys/private.pem -pubout -out infra/keys/public.pem
+	@echo "RSA keys generated in infra/keys/"
+
+# ── Widget Bundle Size ────────────────────────────────────────────────────────
+bundle-size:
+	cd threadly-widget && npm run build && \
+	gzip -c dist/widget.js | wc -c | awk '{printf "Widget bundle: %.1f KB gzipped\n", $$1/1024}'
+
+# ── Deploy ────────────────────────────────────────────────────────────────────
+deploy-railway:
+	railway up --service threadly-core
+	railway up --service threadly-ai
+	railway up --service threadly-web
+
+# ── Seed ─────────────────────────────────────────────────────────────────────
+seed:
+	bash scripts/seed-demo-bot.sh
+
+# ── Help ─────────────────────────────────────────────────────────────────────
+help:
+	@echo ""
+	@echo "Threadly — Available targets:"
+	@echo "  make up            Start all services"
+	@echo "  make down          Stop all services"
+	@echo "  make logs s=<svc>  Tail service logs"
+	@echo "  make build-all     Build all services"
+	@echo "  make test-all      Run all tests"
+	@echo "  make lint-all      Run all linters"
+	@echo "  make fmt-core      Format Java code"
+	@echo "  make codegen       Regenerate TypeScript API hooks"
+	@echo "  make gen-keys      Generate RSA key pair"
+	@echo "  make db-shell      Open Postgres shell"
+	@echo "  make bundle-size   Check widget bundle size"
+	@echo ""

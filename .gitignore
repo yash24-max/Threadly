@@ -70,3 +70,21 @@ threadly-web/app/_generated/
 .cache/
 tmp/
 temp/
+
+# Claude Code internal (worktrees, session data)
+.claude/
+
+# Keys (never commit private keys)
+infra/keys/
+*.pem
+*.key
+
+# Playwright test results
+threadly-web/test-results/
+threadly-web/playwright-report/
+
+# Python uv lock (optional — remove if you want reproducible installs)
+# threadly-ai/uv.lock
+
+# Railway
+.railway/

@@ -1,231 +1,234 @@
 "use client";
 
+import { useCallback, useRef } from "react";
 import type { Node } from "@xyflow/react";
+import { Settings2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { MessageProperties } from "./properties/MessageProperties";
+import { QuestionProperties } from "./properties/QuestionProperties";
+import { AiReplyProperties } from "./properties/AiReplyProperties";
+import { ConditionProperties } from "./properties/ConditionProperties";
+import { SwitchProperties } from "./properties/SwitchProperties";
+import { ApiCallProperties } from "./properties/ApiCallProperties";
+import { DelayProperties } from "./properties/DelayProperties";
+import { CollectInputProperties } from "./properties/CollectInputProperties";
+import { SendEmailProperties } from "./properties/SendEmailProperties";
+import { SetVariableProperties } from "./properties/SetVariableProperties";
+import { HandoffProperties } from "./properties/HandoffProperties";
+import { EndProperties } from "./properties/EndProperties";
 
-interface Props {
-  node: Node | null;
-  onChange: (id: string, data: Record<string, unknown>) => void;
+interface PropertiesPanelProps {
+  selectedNode: Node | null;
+  onUpdateNode: (nodeId: string, data: Record<string, unknown>) => void;
 }
 
-export function PropertiesPanel({ node, onChange }: Props) {
-  if (!node) {
+const NODE_TYPE_LABELS: Record<string, string> = {
+  message: "Send Message",
+  question: "Ask Question",
+  collect_input: "Collect Input",
+  condition: "Condition",
+  switch: "Switch",
+  set_variable: "Set Variable",
+  delay: "Delay",
+  ai_reply: "AI Reply",
+  api_call: "HTTP Request",
+  send_email: "Send Email",
+  handoff: "Human Handoff",
+  end: "End Flow",
+  start: "Start",
+};
+
+const NODE_TYPE_COLORS: Record<string, string> = {
+  message: "#3B82F6",
+  question: "#3B82F6",
+  collect_input: "#3B82F6",
+  condition: "#8B5CF6",
+  switch: "#8B5CF6",
+  set_variable: "#8B5CF6",
+  delay: "#8B5CF6",
+  ai_reply: "#EC4899",
+  api_call: "#F59E0B",
+  send_email: "#F59E0B",
+  handoff: "#10B981",
+  end: "#6B7280",
+  start: "#10B981",
+};
+
+export function PropertiesPanel({ selectedNode, onUpdateNode }: PropertiesPanelProps) {
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleUpdate = useCallback(
+    (data: Record<string, unknown>) => {
+      if (!selectedNode) return;
+      // Debounce 300ms to batch rapid changes and trigger autosave
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      debounceTimer.current = setTimeout(() => {
+        onUpdateNode(selectedNode.id, data);
+      }, 300);
+    },
+    [selectedNode, onUpdateNode]
+  );
+
+  if (!selectedNode) {
     return (
-      <div style={{
-        width: 260, borderLeft: "1px solid var(--border)",
-        background: "var(--bg-panel)", display: "flex",
-        alignItems: "center", justifyContent: "center",
-        color: "var(--text-muted)", fontSize: 13, padding: 20, textAlign: "center",
-      }}>
-        Click a node to configure it
+      <div
+        className={cn(
+          "w-[260px] flex-shrink-0",
+          "border-l border-[var(--border)] bg-[var(--bg-panel)]",
+          "flex flex-col items-center justify-center",
+          "text-[var(--text-muted)] p-6 text-center"
+        )}
+        aria-label="Properties panel"
+      >
+        <Settings2
+          size={32}
+          className="mb-3 opacity-20"
+          aria-hidden="true"
+        />
+        <p className="text-[13px] font-medium text-[var(--text-muted)]">
+          No node selected
+        </p>
+        <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">
+          Click a node on the canvas to configure its properties
+        </p>
       </div>
     );
   }
 
-  const update = (key: string, value: unknown) =>
-    onChange(node.id, { ...(node.data as Record<string, unknown>), [key]: value });
+  const nodeType = selectedNode.type ?? "";
+  const label = NODE_TYPE_LABELS[nodeType] ?? nodeType;
+  const accentColor = NODE_TYPE_COLORS[nodeType] ?? "#6B7280";
 
-  const label = (text: string) => (
-    <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
-      {text}
-    </label>
-  );
-
-  const input = (key: string, placeholder = "", type = "text") => (
-    <input
-      type={type}
-      value={(node.data as any)[key] ?? ""}
-      onChange={(e) => update(key, e.target.value)}
-      placeholder={placeholder}
-      style={{
-        width: "100%", padding: "8px 10px",
-        background: "var(--bg-surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)", color: "var(--text-primary)",
-        fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 12,
-      }}
-    />
-  );
-
-  const textarea = (key: string, placeholder = "", rows = 3) => (
-    <textarea
-      value={(node.data as any)[key] ?? ""}
-      onChange={(e) => update(key, e.target.value)}
-      placeholder={placeholder}
-      rows={rows}
-      style={{
-        width: "100%", padding: "8px 10px",
-        background: "var(--bg-surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)", color: "var(--text-primary)",
-        fontSize: 13, outline: "none", resize: "vertical",
-        boxSizing: "border-box", fontFamily: "inherit", marginBottom: 12,
-      }}
-    />
-  );
-
-  const toggle = (key: string, text: string) => (
-    <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, cursor: "pointer" }}>
-      <input
-        type="checkbox"
-        checked={!!(node.data as any)[key]}
-        onChange={(e) => update(key, e.target.checked)}
-        style={{ width: 14, height: 14, accentColor: "var(--accent)" }}
-      />
-      <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{text}</span>
-    </label>
-  );
-
-  const sectionTitle = (text: string) => (
-    <p style={{
-      fontSize: 11, fontWeight: 600, letterSpacing: "0.5px",
-      textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 10,
-    }}>
-      {text}
-    </p>
-  );
+  const renderProperties = () => {
+    switch (nodeType) {
+      case "message":
+        return (
+          <MessageProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "question":
+        return (
+          <QuestionProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "collect_input":
+        return (
+          <CollectInputProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "condition":
+        return (
+          <ConditionProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "switch":
+        return (
+          <SwitchProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "set_variable":
+        return (
+          <SetVariableProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "delay":
+        return (
+          <DelayProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "ai_reply":
+        return (
+          <AiReplyProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "api_call":
+        return (
+          <ApiCallProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "send_email":
+        return (
+          <SendEmailProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "handoff":
+        return (
+          <HandoffProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "end":
+        return (
+          <EndProperties
+            node={selectedNode}
+            onUpdate={handleUpdate}
+          />
+        );
+      case "start":
+        return (
+          <div className="text-[12px] text-[var(--text-muted)] py-4 text-center">
+            <p>The start node has no configurable properties.</p>
+            <p className="mt-1 text-[11px]">Connect it to the first node in your flow.</p>
+          </div>
+        );
+      default:
+        return (
+          <p className="text-[12px] text-[var(--text-muted)] py-4 text-center">
+            No properties available for this node type.
+          </p>
+        );
+    }
+  };
 
   return (
-    <div style={{
-      width: 260, borderLeft: "1px solid var(--border)",
-      background: "var(--bg-panel)", overflow: "auto",
-      display: "flex", flexDirection: "column",
-    }}>
-      <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
-        <p style={{ fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
-          {node.type?.replace("_", " ")}
+    <div
+      className={cn(
+        "w-[260px] flex-shrink-0",
+        "border-l border-[var(--border)] bg-[var(--bg-panel)]",
+        "flex flex-col overflow-hidden"
+      )}
+      aria-label="Node properties"
+    >
+      {/* Header */}
+      <div
+        className="px-4 py-3 border-b border-[var(--border)]"
+        style={{ borderTopColor: accentColor, borderTopWidth: 2 }}
+      >
+        <p
+          className="text-[11px] font-semibold uppercase tracking-wide"
+          style={{ color: accentColor }}
+        >
+          {label}
         </p>
-        <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>ID: {node.id}</p>
+        <p className="text-[11px] text-[var(--text-muted)] mt-0.5 font-mono truncate">
+          {selectedNode.id}
+        </p>
       </div>
 
-      <div style={{ padding: 14, flex: 1 }}>
-        {node.type === "message" && (
-          <>
-            {sectionTitle("Message")}
-            {label("Text (supports {{variables}})")}
-            {textarea("text", "Hello! How can I help you today?", 4)}
-          </>
-        )}
-
-        {node.type === "question" && (
-          <>
-            {sectionTitle("Question")}
-            {label("Question text")}
-            {textarea("text", "What's your name?", 3)}
-            {label("Save answer to variable")}
-            {input("variableName", "customer_name")}
-            {label("Placeholder text")}
-            {input("placeholder", "Type your answer…")}
-          </>
-        )}
-
-        {node.type === "ai_reply" && (
-          <>
-            {sectionTitle("AI Reply")}
-            {label("System prompt")}
-            {textarea("systemPrompt", "You are a helpful assistant for {{org.name}}.", 5)}
-            {label("Max tokens")}
-            {input("maxTokens", "500", "number")}
-            {toggle("useKb", "Use Knowledge Base (RAG)")}
-            {toggle("streamTokens", "Stream tokens in real-time")}
-            {label("LLM Provider")}
-            <select
-              value={(node.data as any).provider ?? "auto"}
-              onChange={(e) => update("provider", e.target.value)}
-              style={{
-                width: "100%", padding: "8px 10px",
-                background: "var(--bg-surface)", border: "1px solid var(--border)",
-                borderRadius: "var(--radius-md)", color: "var(--text-primary)",
-                fontSize: 13, outline: "none", marginBottom: 12,
-              }}
-            >
-              <option value="auto">Auto (Anthropic → OpenAI)</option>
-              <option value="anthropic">Anthropic Claude</option>
-              <option value="openai">OpenAI GPT</option>
-            </select>
-          </>
-        )}
-
-        {node.type === "condition" && (
-          <>
-            {sectionTitle("Condition")}
-            {label("Variable")}
-            {input("variable", "customer_name")}
-            {label("Operator")}
-            <select
-              value={(node.data as any).operator ?? "equals"}
-              onChange={(e) => update("operator", e.target.value)}
-              style={{
-                width: "100%", padding: "8px 10px",
-                background: "var(--bg-surface)", border: "1px solid var(--border)",
-                borderRadius: "var(--radius-md)", color: "var(--text-primary)",
-                fontSize: 13, outline: "none", marginBottom: 12,
-              }}
-            >
-              <option value="equals">Equals</option>
-              <option value="contains">Contains</option>
-              <option value="not_equals">Not equals</option>
-              <option value="greater_than">Greater than</option>
-              <option value="less_than">Less than</option>
-            </select>
-            {label("Value")}
-            {input("value", "yes")}
-            <p style={{ fontSize: 11, color: "var(--text-muted)" }}>
-              True → bottom-left handle · False → bottom-right handle
-            </p>
-          </>
-        )}
-
-        {node.type === "api_call" && (
-          <>
-            {sectionTitle("API Call")}
-            {label("Method")}
-            <select
-              value={(node.data as any).method ?? "GET"}
-              onChange={(e) => update("method", e.target.value)}
-              style={{
-                width: "100%", padding: "8px 10px",
-                background: "var(--bg-surface)", border: "1px solid var(--border)",
-                borderRadius: "var(--radius-md)", color: "var(--text-primary)",
-                fontSize: 13, outline: "none", marginBottom: 12,
-              }}
-            >
-              <option>GET</option>
-              <option>POST</option>
-              <option>PATCH</option>
-              <option>DELETE</option>
-            </select>
-            {label("URL")}
-            {input("url", "https://api.example.com/data")}
-            {label("Headers (JSON)")}
-            {textarea("headers", '{"Authorization": "Bearer {{api_key}}"}', 2)}
-            {label("Body (JSON, for POST/PATCH)")}
-            {textarea("body", '{"name": "{{customer_name}}"}', 3)}
-            {label("Save response to variable")}
-            {input("responseVariable", "api_response")}
-          </>
-        )}
-
-        {node.type === "set_variable" && (
-          <>
-            {sectionTitle("Set Variable")}
-            {label("Variable name")}
-            {input("variableName", "my_variable")}
-            {label("Value")}
-            {input("value", "hello or {{other_variable}}")}
-          </>
-        )}
-
-        {node.type === "handoff" && (
-          <>
-            {sectionTitle("Handoff")}
-            {label("Message to visitor")}
-            {textarea("message", "Connecting you to an agent…", 2)}
-          </>
-        )}
-
-        {(node.type === "start" || node.type === "end") && (
-          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            No configuration needed for this node.
-          </p>
-        )}
+      {/* Properties form */}
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {renderProperties()}
       </div>
     </div>
   );

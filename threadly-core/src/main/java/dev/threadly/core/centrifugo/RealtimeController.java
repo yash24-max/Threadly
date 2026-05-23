@@ -7,14 +7,24 @@ import io.jsonwebtoken.security.Keys;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/v1")
@@ -30,12 +40,41 @@ public class RealtimeController {
 
   private final FlowRuntime flowRuntime;
 
+  /**
+   * Issues a Centrifugo JWT for the requesting principal.
+   *
+   * <p>Supports two authentication modes:
+   * <ul>
+   *   <li><b>JWT (dashboard user)</b>: standard Bearer JWT — issues a personal token for the
+   *       authenticated user, subscribed to their org dashboard channel.</li>
+   *   <li><b>API Key (widget/bot)</b>: {@code Authorization: Bearer tly_live_xxx} — issues a
+   *       token scoped to the bot's channel only. The subject is the botId resolved from the
+   *       API key. This allows the widget to connect to Centrifugo using only a botId and the
+   *       secret API key, without requiring user credentials.</li>
+   * </ul>
+   */
   @GetMapping("/realtime/token")
   @PostMapping("/realtime/token")
-  @Operation(summary = "Issue Centrifugo JWT for authenticated dashboard user")
-  public ResponseEntity<Map<String, String>> getDashboardToken() {
+  @Operation(summary = "Issue Centrifugo JWT for authenticated dashboard user or API key holder")
+  public ResponseEntity<Map<String, String>> getDashboardToken(
+      @RequestParam(required = false) String botId) {
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    boolean isApiKey = auth != null && auth.getAuthorities().stream()
+        .map(GrantedAuthority::getAuthority)
+        .anyMatch("ROLE_API_KEY"::equals);
+
+    if (isApiKey) {
+      // API key auth — subject is the botId stored in TenantContext as "userId"
+      UUID resolvedBotId = TenantContext.getUserId();
+      String channel = "bot:" + resolvedBotId;
+      String token = buildCentrifugoJwt(resolvedBotId.toString(), List.of(channel));
+      return ResponseEntity.ok(Map.of("token", token, "channel", channel));
+    }
+
+    // Standard JWT dashboard user
     UUID userId = TenantContext.getUserId();
-    String token = buildCentrifugoJwt(userId.toString());
+    String token = buildCentrifugoJwt(userId.toString(), List.of());
     return ResponseEntity.ok(Map.of("token", token));
   }
 
@@ -49,8 +88,9 @@ public class RealtimeController {
     String vid = (visitorId != null && !visitorId.isBlank())
         ? visitorId
         : UUID.randomUUID().toString();
-    String token = buildCentrifugoJwt(vid);
-    return ResponseEntity.ok(Map.of("token", token, "visitorId", vid));
+    String channel = "chat:" + botId + ":" + vid;
+    String token = buildCentrifugoJwt(vid, List.of(channel));
+    return ResponseEntity.ok(Map.of("token", token, "visitorId", vid, "channel", channel));
   }
 
   /** HTTP fallback — used when Centrifugo publish fails from the widget. */
@@ -77,14 +117,27 @@ public class RealtimeController {
     private String text;
   }
 
-  private String buildCentrifugoJwt(String subject) {
+  /**
+   * Builds a Centrifugo-compatible JWT.
+   *
+   * @param subject    the JWT subject (userId or botId)
+   * @param channels   optional list of channels to embed in the token's "channels" claim
+   *                   (Centrifugo uses this for channel-scoped tokens)
+   */
+  private String buildCentrifugoJwt(String subject, List<String> channels) {
     byte[] key = tokenSecret.getBytes(StandardCharsets.UTF_8);
     // Pad key to 256 bits if needed
-    if (key.length < 32) key = java.util.Arrays.copyOf(key, 32);
-    return Jwts.builder()
+    if (key.length < 32) key = Arrays.copyOf(key, 32);
+
+    var builder = Jwts.builder()
         .subject(subject)
         .expiration(new Date(System.currentTimeMillis() + tokenExpirySeconds * 1000))
-        .signWith(Keys.hmacShaKeyFor(key))
-        .compact();
+        .signWith(Keys.hmacShaKeyFor(key));
+
+    if (channels != null && !channels.isEmpty()) {
+      builder.claim("channels", channels);
+    }
+
+    return builder.compact();
   }
 }

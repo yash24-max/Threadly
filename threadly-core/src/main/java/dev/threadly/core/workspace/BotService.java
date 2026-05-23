@@ -1,5 +1,6 @@
 package dev.threadly.core.workspace;
 
+import dev.threadly.core.common.AuditService;
 import dev.threadly.core.common.TenantContext;
 import dev.threadly.core.workspace.BotController.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -17,6 +18,7 @@ public class BotService {
 
   private final BotRepository botRepository;
   private final OrgRepository orgRepository;
+  private final AuditService auditService;
 
   @Value("${threadly.widget.cdn-url:http://localhost:8080}")
   private String cdnUrl;
@@ -38,6 +40,7 @@ public class BotService {
             .description(req.getDescription())
             .language(req.getLanguage() != null ? req.getLanguage() : "en")
             .build());
+    auditService.log("BOT_CREATED", "BOT", bot.getId(), null, toResponse(bot));
     return toResponse(bot);
   }
 
@@ -48,17 +51,22 @@ public class BotService {
   @Transactional
   public BotResponse updateBot(UUID id, UpdateBotRequest req) {
     Bot bot = findBotForCurrentOrg(id);
+    BotResponse oldState = toResponse(bot);
     if (req.getName() != null) bot.setName(req.getName());
     if (req.getDescription() != null) bot.setDescription(req.getDescription());
     if (req.getTheme() != null) bot.setTheme(req.getTheme());
     if (req.getActive() != null) bot.setActive(req.getActive());
-    return toResponse(botRepository.save(bot));
+    BotResponse newState = toResponse(botRepository.save(bot));
+    auditService.log("BOT_UPDATED", "BOT", id, oldState, newState);
+    return newState;
   }
 
   @Transactional
   public void deleteBot(UUID id) {
     Bot bot = findBotForCurrentOrg(id);
+    BotResponse snapshot = toResponse(bot);
     botRepository.delete(bot);
+    auditService.log("BOT_DELETED", "BOT", id, snapshot, null);
   }
 
   public EmbedResponse getEmbedConfig(UUID id) {

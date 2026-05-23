@@ -1,6 +1,6 @@
 # Threadly — Sprint Tracker
 
-> Phase 0 MVP. Updated: 2026-05-21
+> Phase 0 MVP + Sprint 2 Active. Updated: 2026-05-23
 > Run everything: `make up` · Docs: `docs/` · Plan: `.claude/plans/`
 
 ---
@@ -10,6 +10,143 @@
 - `[ ]` Pending — not yet built
 - `[~]` Partial — scaffolded but needs work
 - `[!]` Blocked / needs decision
+
+---
+
+## Sprint 2 — Parallel Agent Sprint
+
+> Started: 2026-05-21 · Target completion: 2026-05-28
+> 6 agents running in parallel across dedicated git worktrees.
+
+### Sprint 2 Agent Summary
+
+| Agent | Tasks | Done | Status |
+|-------|-------|------|--------|
+| Backend Agent | 13 | 13 | ✅ 13/13 |
+| AI+Widget Agent | 15 | 15 | ✅ 15/15 |
+| Frontend Agent | 8 | 0 | 🔄 0/8 |
+| Testing Agent | 12 | 0 | 🔄 0/12 |
+| Tech Lead Agent | 14 | 0 | 🔄 0/14 |
+| PM Agent | 5 | 0 | 🔄 0/5 |
+| **Total** | **67** | **28** | **42%** |
+
+---
+
+### Backend Agent — Sprint 2 Tasks ✅ 13/13
+
+| # | Task | Status |
+|---|------|--------|
+| B2-1 | `OrgMembership` entity (id, org_id, user_id, role, invited_email, accepted_at) | `[x]` |
+| B2-2 | `TeamController` — invite, list, update role, remove | `[x]` |
+| B2-3 | Flyway V2: `org_memberships` + `api_keys` tables | `[x]` |
+| B2-4 | `ApiKey` entity + `ApiKeyController` (create, list, revoke) | `[x]` |
+| B2-5 | `JwtAuthFilter` — API key auth branch (tly_live_ prefix detection) | `[x]` |
+| B2-6 | `WebhookController` + `WebhookDeliveryService` (HMAC-SHA256, Resilience4j retry) | `[x]` |
+| B2-7 | Flyway V3: `webhooks` + `webhook_deliveries` tables | `[x]` |
+| B2-8 | `GET /flow/export` + `POST /flow/import` on `FlowController` | `[x]` |
+| B2-9 | 4 new node executors: `DelayNodeExecutor`, `SwitchNodeExecutor`, `SendEmailNodeExecutor`, `CollectInputNodeExecutor` | `[x]` |
+| B2-10 | Conversation bulk ops: `POST /conversations/bulk-close`, `POST /conversations/bulk-assign`, `GET /conversations/export` (CSV) | `[x]` |
+| B2-11 | Per-bot analytics: `GET /bots/{id}/analytics/summary`, `/daily`, `/funnel` | `[x]` |
+| B2-12 | `CredentialsController` + `CredentialsService` (AES-256-GCM, PBKDF2) + Flyway V4 | `[x]` |
+| B2-13 | `SecurityHeadersFilter` (CSP/HSTS/X-Frame-Options) + `RateLimitFilter` (Bucket4j + Redis) + Flyway V5 (events) | `[x]` |
+
+---
+
+### AI+Widget Agent — Sprint 2 Tasks ✅ 15/15
+
+| # | Task | Status |
+|---|------|--------|
+| A2-1 | `AnthropicProvider` streaming (claude-3-5-sonnet) + `OpenAIProvider` fallback + `ProviderChain` | `[x]` |
+| A2-2 | `COSTS` table + `CostTracker` (input/output $/token per provider) | `[x]` |
+| A2-3 | Hybrid RAG: BM25 sparse index + RRF fusion with Qdrant dense results | `[x]` |
+| A2-4 | Cohere reranker integration (optional, `rerank=true` param) | `[x]` |
+| A2-5 | Citation formatting: `[1][2]` inline markers + `Citation` model (doc_name, page, passage) | `[x]` |
+| A2-6 | `/ai/summarize` route | `[x]` |
+| A2-7 | `/ai/suggest-replies` route (returns 3 options as JSON array) | `[x]` |
+| A2-8 | `/ai/extract-entities` route (NER: name, email, phone, company, topic) | `[x]` |
+| A2-9 | `/ai/classify-intent` route (intent + confidence score) | `[x]` |
+| A2-10 | Langfuse tracing: trace + generation span + flush on every `/ai/complete` | `[x]` |
+| A2-11 | Improved ingestion: 512-token chunks, 50-token overlap, progress callbacks | `[x]` |
+| A2-12 | Widget rich messages: ButtonMessage, CardMessage, QuickReplies, file attachment rendering | `[x]` |
+| A2-13 | Widget file upload: XHR + progress bar + 10 MB limit | `[x]` |
+| A2-14 | Widget UX: unread badge, Web Audio notification, timestamps (hover), delivery status ✓/✓✓, sessionStorage persistence | `[x]` |
+| A2-15 | Widget theme system: 12 CSS custom properties, darkMode auto/light/dark | `[x]` |
+
+---
+
+### Frontend Agent — Sprint 2 Tasks 🔄 0/8
+
+| # | Task | Status |
+|---|------|--------|
+| F2-1 | n8n-inspired node catalog (NodePanel.tsx) — categories: AI, Logic, Actions, Utils; searchable | `[ ]` |
+| F2-2 | PropertiesPanel.tsx — 12 input types: text, number, select, multiselect, code, json, condition-builder, email-template, variable-picker, credential-picker, toggle, slider | `[ ]` |
+| F2-3 | Analytics page `app/(app)/analytics/page.tsx` — bar chart (daily messages), line chart (costs), funnel chart | `[ ]` |
+| F2-4 | Conversation inbox redesign: react-virtual scrolling, bulk select + bulk-close action, CSV export button | `[ ]` |
+| F2-5 | Onboarding wizard `app/(app)/onboarding/page.tsx` — 3 steps: create bot, install snippet (copy + verify), go live | `[ ]` |
+| F2-6 | Credentials manager `app/(app)/settings/credentials/page.tsx` — list, create modal, delete | `[ ]` |
+| F2-7 | Command palette enhancements — recent actions history, bot-scoped search, Cmd+K from builder | `[ ]` |
+| F2-8 | Theme preview live panel in `bots/[id]/settings/page.tsx` — full widget preview iframe | `[ ]` |
+
+---
+
+### Testing Agent — Sprint 2 Tasks 🔄 0/12
+
+| # | Task | Status |
+|---|------|--------|
+| T2-1 | `AuthIntegrationTest.java` (Testcontainers Postgres + Redis) — signup, login, refresh, logout, /me | `[ ]` |
+| T2-2 | `BotIntegrationTest.java` — CRUD, theme update, snippet generation | `[ ]` |
+| T2-3 | `FlowIntegrationTest.java` — saveDraft, publish, rollback, import/export | `[ ]` |
+| T2-4 | `ConversationIntegrationTest.java` — create, handoff, agent reply, bulk-close, CSV export | `[ ]` |
+| T2-5 | `TenantIsolationTest.java` — Org A API key cannot read Org B bots/conversations/KB | `[ ]` |
+| T2-6 | `AnalyticsIntegrationTest.java` — summary, daily, funnel per bot | `[ ]` |
+| T2-7 | `test_complete.py` (Pytest) — streaming response, citation format, fallback provider | `[ ]` |
+| T2-8 | `test_kb.py` — ingest, query, BM25+RRF fusion, Cohere rerank toggle | `[ ]` |
+| T2-9 | `test_ai_utils.py` — summarize, suggest-replies, extract-entities, classify-intent | `[ ]` |
+| T2-10 | Playwright E2E: `auth.spec.ts` — signup → login → logout full flow | `[ ]` |
+| T2-11 | Playwright E2E: `builder.spec.ts` — create bot → add nodes → publish → verify live | `[ ]` |
+| T2-12 | Vitest widget: `theme.test.ts` + `ws-client.test.ts` + `ChatPanel.test.tsx` | `[ ]` |
+
+---
+
+### Tech Lead Agent — Sprint 2 Tasks 🔄 0/14
+
+| # | Task | Status |
+|---|------|--------|
+| TL2-1 | `FlowSchemaValidator.java` — full JSON Schema validation (required fields per node type) | `[ ]` |
+| TL2-2 | `ConditionNodeExecutor.java` — 12 operators: eq, neq, gt, lt, gte, lte, contains, startsWith, endsWith, in, notIn, regex | `[ ]` |
+| TL2-3 | `HmacRequestFilter.java` — sign all Core→AI requests with `X-Service-Signature` header | `[ ]` |
+| TL2-4 | `AuditLog.java` entity: entity_type, entity_id, action, actor_id, old_value JSONB, new_value JSONB, occurred_at | `[ ]` |
+| TL2-5 | `AuditInterceptor.java` — Spring MVC interceptor capturing all mutating requests to AuditLog | `[ ]` |
+| TL2-6 | Flyway V6: `audit_log` table | `[ ]` |
+| TL2-7 | `railway.toml` — Railway.app deployment config for core + ai + web services | `[ ]` |
+| TL2-8 | Cloudflare Worker `infra/cloudflare/worker.js` — widget CDN edge cache + cache-busting | `[ ]` |
+| TL2-9 | Grafana production dashboard `infra/grafana/dashboards/threadly-prod.json` | `[ ]` |
+| TL2-10 | `ThreadlyMetrics.java` — Micrometer custom meters: messages.total, conversations.active, llm.cost.usd, handoffs.total | `[ ]` |
+| TL2-11 | `application-prod.yml` — production profile (connection pools, logging, feature flags) | `[ ]` |
+| TL2-12 | Maven wrapper `mvnw` added to threadly-core | `[ ]` |
+| TL2-13 | OTel trace propagation validated end-to-end: web → core → ai | `[ ]` |
+| TL2-14 | `mypy --strict` passing in threadly-ai | `[ ]` |
+
+---
+
+### PM Agent — Sprint 2 Tasks 🔄 0/5
+
+| # | Task | Status |
+|---|------|--------|
+| PM2-1 | `PRODUCT_STATUS.md` — master feature + API + schema tracker | `[ ]` |
+| PM2-2 | `AGENTS.md` — agent coordination doc with contracts | `[ ]` |
+| PM2-3 | `CHANGELOG.md` — Keep a Changelog format, Sprint 2 + v0.1.0 | `[ ]` |
+| PM2-4 | `SPRINT.md` — Sprint 2 prepended to existing Sprint 1 | `[ ]` |
+| PM2-5 | `FEATURES.md` — feature registry, 30+ features with user stories | `[ ]` |
+
+---
+
+---
+
+# Sprint Tracker — Phase 0 (Original)
+
+> Phase 0 MVP. Updated: 2026-05-21
+> Run everything: `make up` · Docs: `docs/` · Plan: `.claude/plans/`
 
 ---
 
@@ -236,7 +373,7 @@
 | S4-27 | `app/(app)/bots/page.tsx` — list, create, delete | `[x]` |
 | S4-28 | Bot settings (accent color picker, avatar upload, greeting text) | `[x]` `bots/[id]/settings/page.tsx` with color swatches + live preview |
 
-### 4G · Flow Builder ← KEY MILESTONE
+### 4G · Flow Builder
 | # | Task | Status |
 |---|------|--------|
 | S4-29 | `components/builder/nodes/NodeTypes.tsx` — all 8 custom node components | `[x]` |

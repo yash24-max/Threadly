@@ -1,5 +1,6 @@
 package dev.threadly.core.common;
 
+import dev.threadly.core.flow.FlowValidationException;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,6 +43,15 @@ public class GlobalExceptionHandler {
             .errors(fieldErrors)
             .build();
     return ResponseEntity.badRequest().body(error);
+  }
+
+  @ExceptionHandler(FlowValidationException.class)
+  public ResponseEntity<Map<String, Object>> handleFlowValidation(FlowValidationException ex) {
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+        .body(Map.of(
+            "status", 422,
+            "message", "Flow validation failed",
+            "errors", ex.getErrors()));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)

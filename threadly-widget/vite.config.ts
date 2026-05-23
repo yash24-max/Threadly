@@ -8,6 +8,17 @@ export default defineConfig({
     compression({ algorithm: "gzip", ext: ".gz" }),
     compression({ algorithm: "brotliCompress", ext: ".br" }),
   ],
+  test: {
+    globals: true,
+    environment: "jsdom",
+    include: ["src/__tests__/**/*.test.ts"],
+    setupFiles: [],
+    coverage: {
+      reporter: ["text", "lcov"],
+      include: ["src/**/*.ts"],
+      exclude: ["src/__tests__/**", "src/widget.ts"],
+    },
+  },
   build: {
     lib: {
       entry: "src/widget.ts",

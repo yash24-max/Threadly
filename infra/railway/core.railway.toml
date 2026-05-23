@@ -1,0 +1,19 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "cd threadly-core && ./mvnw clean package -DskipTests"
+watchPatterns = ["threadly-core/**"]
+
+[deploy]
+startCommand = "java -jar threadly-core/target/threadly-core-*.jar"
+healthcheckPath = "/actuator/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[[deploy.envVars]]
+name = "SPRING_PROFILES_ACTIVE"
+value = "prod"
+
+[[deploy.envVars]]
+name = "JAVA_TOOL_OPTIONS"
+value = "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"

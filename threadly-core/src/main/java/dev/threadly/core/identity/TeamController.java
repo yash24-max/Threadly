@@ -1,5 +1,6 @@
 package dev.threadly.core.identity;
 
+import dev.threadly.core.common.AuditService;
 import dev.threadly.core.common.TenantContext;
 import dev.threadly.core.outbox.OutboxService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +39,8 @@ public class TeamController {
   private final OrgMembershipRepository membershipRepository;
   private final UserRepository userRepository;
   private final OutboxService outboxService;
+  private final AuditService auditService;
+  private final InviteEmailService inviteEmailService;
 
   @GetMapping
   @Operation(summary = "List org members with roles")
@@ -85,6 +88,12 @@ public class TeamController {
             "role", req.getRole().toUpperCase(),
             "invitedBy", TenantContext.getUserId().toString()));
 
+    auditService.log("MEMBER_INVITED", "MEMBER", membership.getId(),
+        null, Map.of("inviteeEmail", invitee.getEmail(), "role", membership.getRole()));
+
+    inviteEmailService.sendInviteEmail(
+        orgId, invitee.getEmail(), membership.getRole(), TenantContext.getUserId());
+
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(new InviteResponse(membership.getId().toString(), invitee.getEmail(), membership.getRole()));
   }
@@ -101,6 +110,7 @@ public class TeamController {
         .findByOrgIdAndUserId(orgId, userId)
         .orElseThrow(() -> new EntityNotFoundException("Membership not found for user: " + userId));
     membershipRepository.deleteByOrgIdAndUserId(orgId, userId);
+    auditService.log("MEMBER_REMOVED", "MEMBER", userId, Map.of("userId", userId.toString()), null);
     return ResponseEntity.noContent().build();
   }
 
@@ -119,8 +129,12 @@ public class TeamController {
         membershipRepository
             .findByOrgIdAndUserId(orgId, userId)
             .orElseThrow(() -> new EntityNotFoundException("Membership not found for user: " + userId));
+    String oldRole = membership.getRole();
     membership.setRole(req.getRole().toUpperCase());
-    return toResponse(membershipRepository.save(membership));
+    MemberResponse updated = toResponse(membershipRepository.save(membership));
+    auditService.log("ROLE_CHANGED", "MEMBER", membership.getId(),
+        Map.of("role", oldRole), Map.of("role", membership.getRole()));
+    return updated;
   }
 
   private void requireOrgAccess(UUID orgId) {

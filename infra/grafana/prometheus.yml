@@ -1,19 +1,34 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  external_labels:
+    service: threadly
+
+alerting:
+  alertmanagers: []
 
 scrape_configs:
-  - job_name: threadly-core
-    metrics_path: /actuator/prometheus
+  - job_name: 'threadly-core'
     static_configs:
-      - targets: ["threadly-core:8080"]
+      - targets: ['threadly-core:8080']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 10s
 
-  - job_name: threadly-ai
-    metrics_path: /metrics
+  - job_name: 'threadly-ai'
     static_configs:
-      - targets: ["threadly-ai:8081"]
+      - targets: ['threadly-ai:8081']
+    metrics_path: '/metrics'
 
-  - job_name: centrifugo
-    metrics_path: /metrics
+  - job_name: 'centrifugo'
     static_configs:
-      - targets: ["centrifugo:8000"]
+      - targets: ['centrifugo:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
