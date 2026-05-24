@@ -82,3 +82,8 @@ logging:
     dev.threadly: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
+
+runtime:
+  max-execution-depth: 100
+  node-execution-timeout-ms: 30000
+  enable-variable-resolution: true

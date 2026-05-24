@@ -1,6 +1,6 @@
 package dev.threadly.flow.catalog;
 
-import dev.threadly.common.dto.NodeCatalogEntryDto;
+import dev.threadly.flow.dto.NodeCatalogEntryDto;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

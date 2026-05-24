@@ -15,12 +15,26 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: identity_service
+        jdbc:
+          batch_size: 25
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
 
   flyway:
     baseline-on-migrate: false
     enabled: true
     locations: classpath:db/migration
     schemas: identity_service
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=5m
+    cache-names:
+      - users
+      - usersByEmail
+      - organizations
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -82,3 +96,10 @@ logging:
     dev.threadly: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
+
+# JWT Configuration
+auth:
+  jwt:
+    secret: ${JWT_SECRET:defaultSecretKeyFor256BitHMACSigningAlgorithmChangeInProduction}
+    access-token-expiry-seconds: 900
+    refresh-token-expiry-seconds: 2592000
