@@ -1,0 +1,267 @@
+THREADLY AI SERVICE - COMPLETE FILE LISTING
+=============================================
+
+Directory Structure:
+====================
+
+/Users/yasva/Kapture/Microservice/Project/Threadly/ai/
+│
+├── main.py                          # FastAPI application entry point
+├── pyproject.toml                   # Project config (Python 3.12, dependencies, tools)
+├── requirements.txt                 # Pip dependencies
+├── Dockerfile                       # Multi-stage production Docker build
+├── docker-compose.yml               # Full stack (Qdrant, Redis, AI service)
+├── .env.example                     # Configuration template
+├── .gitignore                       # Standard Python gitignore
+├── README.md                        # Comprehensive documentation
+│
+├── app/                             # Main application package
+│   ├── __init__.py                  # Package initialization
+│   ├── config.py                    # Pydantic v2 configuration (42 fields)
+│   ├── logger.py                    # Structured logging setup (loguru)
+│   │
+│   ├── llm/                         # LLM provider module
+│   │   ├── __init__.py
+│   │   └── provider.py              # 3 implementations + abstract base
+│   │                                 # - AnthropicProvider (claude-3-5-sonnet)
+│   │                                 # - OpenAIProvider (gpt-4-turbo)
+│   │                                 # - GeminiProvider (gemini-pro)
+│   │
+│   ├── rag/                         # RAG pipeline module
+│   │   ├── __init__.py
+│   │   ├── pipeline.py              # RAGPipeline class
+│   │   ├── embeddings.py            # EmbeddingProvider implementations
+│   │   │                             # - LocalEmbeddingProvider
+│   │   │                             # - VoyageEmbeddingProvider
+│   │   └── parser.py                # Document parsers (PDF, TXT, DOCX)
+│   │
+│   ├── memory/                      # Conversation memory module
+│   │   ├── __init__.py
+│   │   └── builder.py               # MemoryBuilder, MemoryContext
+│   │
+│   └── routes/                      # API endpoints
+│       ├── __init__.py
+│       ├── health.py                # Health checks (4 endpoints)
+│       ├── llm.py                   # LLM endpoints (2 endpoints)
+│       ├── rag.py                   # RAG endpoints (4 endpoints)
+│       └── chat.py                  # Chat endpoints (2 endpoints)
+│
+└── tests/                           # Test suite
+    ├── __init__.py
+    ├── test_config.py               # Configuration tests
+    ├── test_llm_provider.py          # LLM provider tests
+    ├── test_rag_parser.py            # Document parser tests
+    ├── test_memory_builder.py        # Memory builder tests
+    └── test_main.py                 # FastAPI integration tests
+
+FILE COUNT SUMMARY
+==================
+
+Python Files: 21
+  - Source code: 16
+  - Tests: 5
+
+Configuration Files: 3
+  - pyproject.toml
+  - requirements.txt
+  - .env.example
+
+Docker Files: 2
+  - Dockerfile
+  - docker-compose.yml
+
+Documentation: 2
+  - README.md
+  - .gitignore
+
+Total: 28 files
+
+
+API ENDPOINTS (12 total)
+========================
+
+Health (4):
+  GET /
+  GET /health
+  GET /health/ready
+  GET /health/live
+  GET /health/metrics
+
+LLM (2):
+  POST /llm/complete
+  POST /llm/classify
+
+RAG (4):
+  POST /kb/ingest
+  POST /kb/search
+  GET /kb/status/{bot_id}
+  DELETE /kb/documents/{doc_id}
+
+Chat (2):
+  POST /chat/memory/build
+  POST /chat/rag-reply
+
+PYTHON MODULES BREAKDOWN
+========================
+
+app/config.py (103 lines)
+  - Settings class with 42 configuration fields
+  - Pydantic BaseSettings for environment variable loading
+  - Validation for all critical parameters
+
+app/logger.py (53 lines)
+  - Setup function with loguru configuration
+  - File handler with rotation and compression
+  - Bound logger factory function
+
+app/llm/provider.py (363 lines)
+  - Abstract LLMProvider base class
+  - LLMResponse model
+  - AnthropicProvider (streaming with message_stream)
+  - OpenAIProvider (streaming with create)
+  - GeminiProvider (streaming with generate_content)
+  - get_provider factory function
+  - Methods: complete, complete_async, count_tokens, classify
+
+app/rag/pipeline.py (302 lines)
+  - RAGPipeline class
+  - Qdrant client initialization
+  - Collection creation/management
+  - Semantic chunking with overlap
+  - Document ingestion from file
+  - Semantic search
+  - Document deletion
+  - KB status reporting
+
+app/rag/embeddings.py (128 lines)
+  - Abstract EmbeddingProvider
+  - LocalEmbeddingProvider (sentence-transformers)
+  - VoyageEmbeddingProvider (voyage-ai)
+  - get_embedding_provider factory
+
+app/rag/parser.py (85 lines)
+  - parse_document dispatcher
+  - PDF parsing (pypdf)
+  - TXT parsing
+  - DOCX parsing (python-docx with tables)
+
+app/memory/builder.py (186 lines)
+  - MemoryBuilder class
+  - MemoryContext, ConversationTurn models
+  - _fetch_conversation_turns from service
+  - _fetch_visitor_info
+  - _build_system_prompt
+  - _estimate_tokens
+
+app/routes/health.py (82 lines)
+  - health_check: full status with services
+  - ready: K8s readiness probe
+  - live: K8s liveness probe
+  - metrics: Prometheus-compatible metrics
+
+app/routes/llm.py (156 lines)
+  - CompleteRequest, ClassifyRequest models
+  - ClassifyResponse model
+  - complete endpoint (streaming SSE)
+  - classify endpoint (single request)
+
+app/routes/rag.py (209 lines)
+  - SearchRequest, SearchResult, SearchResponse models
+  - IngestResponse, KBStatusResponse models
+  - ingest_document endpoint (file upload)
+  - search endpoint (semantic search)
+  - kb_status endpoint
+  - delete_document endpoint
+
+app/routes/chat.py (200 lines)
+  - RAGReplyRequest, MemoryBuildRequest models
+  - MemoryBuildResponse model
+  - build_memory endpoint
+  - rag_reply endpoint (streaming SSE with citations)
+
+main.py (72 lines)
+  - FastAPI application setup
+  - Lifespan context manager for startup/shutdown
+  - CORS middleware configuration
+  - Router includes
+  - Root endpoint
+
+TEST FILES
+==========
+
+tests/test_config.py (28 lines)
+  - test_settings_load
+  - test_settings_from_env
+  - test_settings_validation
+
+tests/test_llm_provider.py (39 lines)
+  - test_get_provider_anthropic
+  - test_get_provider_openai
+  - test_get_provider_gemini
+  - test_get_provider_invalid
+  - test_count_tokens_estimate
+
+tests/test_rag_parser.py (48 lines)
+  - test_parse_txt
+  - test_parse_document_txt
+  - test_parse_document_unsupported
+
+tests/test_memory_builder.py (55 lines)
+  - test_memory_builder_init
+  - test_memory_context_model
+  - test_estimate_tokens
+  - test_build_system_prompt
+  - test_close
+
+tests/test_main.py (62 lines)
+  - test_root
+  - test_health
+  - test_ready
+  - test_live
+  - test_metrics
+  - test_llm_complete_missing_prompt
+  - test_llm_classify_missing_params
+  - test_rag_search_missing_params
+
+DEPENDENCIES INCLUDED
+====================
+
+Core Web (2):
+  - fastapi>=0.104.0
+  - uvicorn[standard]>=0.24.0
+
+Data Validation (3):
+  - pydantic>=2.5.0
+  - pydantic-settings>=2.1.0
+  - python-dotenv>=1.0.0
+
+LLM SDKs (3):
+  - anthropic>=0.28.0
+  - openai>=1.10.0
+  - google-generativeai>=0.3.0
+
+Vector & Embeddings (2):
+  - qdrant-client[http]>=2.7.0
+  - sentence-transformers>=2.2.2
+
+Document Processing (3):
+  - pypdf>=4.0.0
+  - python-docx>=0.8.11
+  - unstructured>=0.12.0
+
+Utilities (5):
+  - httpx>=0.25.0
+  - aiofiles>=23.2.0
+  - redis>=5.0.0
+  - loguru>=0.7.2
+  - python-multipart>=0.0.6
+  - tenacity>=8.2.3
+
+Development (4):
+  - pytest>=7.4.0
+  - pytest-asyncio>=0.21.0
+  - pytest-cov>=4.1.0
+  - black>=23.12.0
+  - ruff>=0.1.0
+  - mypy>=1.8.0
+

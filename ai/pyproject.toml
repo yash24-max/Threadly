@@ -1,0 +1,86 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "threadly-ai"
+version = "0.1.0"
+description = "Production-ready AI service for Threadly with LLM, RAG, and conversation memory"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Threadly Team", email = "ai@threadly.dev"}
+]
+
+dependencies = [
+    # Core web framework
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+
+    # Data validation & configuration
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0.0",
+
+    # LLM SDKs
+    "anthropic>=0.28.0",
+    "openai>=1.10.0",
+    "google-generativeai>=0.3.0",
+
+    # Vector database & embeddings
+    "qdrant-client[http]>=2.7.0",
+    "sentence-transformers>=2.2.2",
+
+    # Document parsing
+    "pypdf>=4.0.0",
+    "python-docx>=0.8.11",
+    "unstructured>=0.12.0",
+
+    # HTTP & async utilities
+    "httpx>=0.25.0",
+    "aiofiles>=23.2.0",
+
+    # Caching & async
+    "redis>=5.0.0",
+
+    # Logging & monitoring
+    "loguru>=0.7.2",
+    "python-json-logger>=2.0.7",
+
+    # Utilities
+    "python-multipart>=0.0.6",
+    "tenacity>=8.2.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.12.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "types-aiofiles>=23.2.0.0",
+    "types-redis>=4.6.0.0",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+select = ["E", "F", "W", "I", "N", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

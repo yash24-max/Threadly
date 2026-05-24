@@ -1,0 +1,40 @@
+# Core web framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Data validation & configuration
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+# LLM SDKs
+anthropic>=0.28.0
+openai>=1.10.0
+google-generativeai>=0.3.0
+
+# Vector database & embeddings
+qdrant-client[http]>=2.7.0
+sentence-transformers>=2.2.2
+
+# Document parsing
+pypdf>=4.0.0
+python-docx>=0.8.11
+unstructured>=0.12.0
+
+# HTTP & async utilities
+httpx>=0.25.0
+aiofiles>=23.2.0
+
+# Caching & async
+redis>=5.0.0
+
+# Logging & monitoring
+loguru>=0.7.2
+python-json-logger>=2.0.7
+
+# Utilities
+python-multipart>=0.0.6
+tenacity>=8.2.3
+
+# Optional embeddings provider
+# voyageai>=0.3.0
