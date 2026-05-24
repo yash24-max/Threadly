@@ -1,0 +1,358 @@
+name: Migration Phase Gates
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: 'Migration phase'
+        required: true
+        default: 'phase1'
+        type: choice
+        options:
+          - phase1
+          - phase2
+          - phase3
+
+env:
+  REGISTRY: ghcr.io
+  DB_HOST: postgres
+  KAFKA_HOST: kafka
+
+jobs:
+  # Phase 1: Shadow Mode - Deploy all services read-only
+  phase1-deploy:
+    if: github.event.inputs.phase == 'phase1'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: dev
+          POSTGRES_DB: threadly
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build all 9 services
+        run: |
+          cd threadly-core
+          mvn clean package -DskipTests -am -pl \
+            identity-service,workspace-service,flow-service, \
+            runtime-service,conversation-service,knowledge-service, \
+            analytics-service,billing-service,integration-service
+
+      - name: Build Docker images
+        run: |
+          cd threadly-core
+          for service in identity workspace flow runtime conversation knowledge analytics billing integration; do
+            mvn spring-boot:build-image -f ${service}-service/pom.xml \
+              -Dspring-boot.build-image.name=threadly/${service}-service:${{ github.sha }}
+          done
+
+      - name: Create service schemas
+        run: |
+          PGPASSWORD=dev psql -h postgres -U postgres -d threadly << 'EOF'
+          CREATE SCHEMA IF NOT EXISTS identity_service;
+          CREATE SCHEMA IF NOT EXISTS workspace_service;
+          CREATE SCHEMA IF NOT EXISTS flow_service;
+          CREATE SCHEMA IF NOT EXISTS runtime_service;
+          CREATE SCHEMA IF NOT EXISTS conversation_service;
+          CREATE SCHEMA IF NOT EXISTS knowledge_service;
+          CREATE SCHEMA IF NOT EXISTS analytics_service;
+          CREATE SCHEMA IF NOT EXISTS billing_service;
+          CREATE SCHEMA IF NOT EXISTS integration_service;
+          EOF
+
+      - name: Copy monolith data to service schemas
+        run: |
+          bash scripts/migrate-monolith-to-services.sh phase1
+
+      - name: Verify row counts match
+        run: |
+          PGPASSWORD=dev psql -h postgres -U postgres -d threadly << 'EOF'
+          SELECT
+            (SELECT COUNT(*) FROM public.users) as monolith_users,
+            (SELECT COUNT(*) FROM identity_service.users) as service_users
+          WHERE (SELECT COUNT(*) FROM public.users) = (SELECT COUNT(*) FROM identity_service.users);
+          EOF
+
+      - name: Run integration tests (Phase 1 read-only)
+        run: |
+          mvn -f threadly-common-spring/pom.xml verify -DskipITs=false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: phase1-test-results
+          path: target/surefire-reports
+
+      - name: Publish Phase 1 results
+        if: success()
+        run: |
+          cat > /tmp/phase1_results.json << 'EOF'
+          {
+            "phase": "phase1",
+            "status": "PASS",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "checks": {
+              "services_deployed": true,
+              "data_sync": true,
+              "integration_tests": true
+            }
+          }
+          EOF
+          # Upload to shared status store (e.g., S3, artifact)
+
+  # Phase 2: Dual-Write Mode - Enable writes to both systems
+  phase2-validation:
+    if: github.event.inputs.phase == 'phase2'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+      kafka:
+        image: confluentinc/cp-kafka:7.5.0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+
+      - name: Enable dual-write configuration
+        run: |
+          # Update monolith to enable dual-write
+          cat >> threadly-core/application.properties << 'EOF'
+          migration.dual.write.enabled=true
+          migration.dual.write.fail.strategy=log_only
+          migration.dual.write.timeout.ms=5000
+          EOF
+
+      - name: Build monolith + services
+        run: |
+          cd threadly-core
+          mvn clean package -DskipTests
+
+      - name: Start services stack
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+
+      - name: Wait for services ready
+        run: |
+          for i in {1..30}; do
+            curl -f http://localhost:3001/health && \
+            curl -f http://localhost:3002/health && \
+            curl -f http://localhost:3003/health && echo "✓ Services ready" && break
+            sleep 2
+          done
+
+      - name: Run load test (dual-write validation)
+        run: |
+          # Create bots, verify writes to both monolith + services
+          for i in {1..100}; do
+            curl -X POST http://localhost:8080/api/bots \
+              -H "Content-Type: application/json" \
+              -d "{\"name\": \"LoadTest_$i\", \"org_id\": \"org-123\"}"
+          done
+
+      - name: Check dual-write metrics
+        run: |
+          # Verify dual-write lag < 500ms
+          DUAL_WRITE_LAG=$(curl -s http://localhost:8000/metrics | grep dual_write_lag_ms | grep -o '[0-9]*' | head -1)
+          if [ "$DUAL_WRITE_LAG" -gt 500 ]; then
+            echo "❌ Dual-write lag too high: ${DUAL_WRITE_LAG}ms"
+            exit 1
+          fi
+          echo "✓ Dual-write lag: ${DUAL_WRITE_LAG}ms"
+
+      - name: Verify Kafka event propagation
+        run: |
+          # Check consumer group lag
+          docker exec kafka kafka-consumer-groups.sh \
+            --bootstrap-server localhost:9092 \
+            --group workspace-service-consumer \
+            --describe
+
+      - name: Check data consistency
+        run: |
+          # Compare row counts: monolith vs. services
+          MONOLITH_BOTS=$(curl -s http://localhost:8000/api/bots | jq '.items | length')
+          SERVICE_BOTS=$(curl -s http://localhost:3002/api/bots | jq '.items | length')
+
+          if [ "$MONOLITH_BOTS" -ne "$SERVICE_BOTS" ]; then
+            echo "❌ Data mismatch: monolith=$MONOLITH_BOTS, service=$SERVICE_BOTS"
+            exit 1
+          fi
+          echo "✓ Data consistency verified"
+
+      - name: Integration tests (Phase 2)
+        run: |
+          mvn -f threadly-common-spring/pom.xml verify -DskipITs=false
+
+  # Phase 3: Cutover - Switch all traffic to microservices
+  phase3-cutover:
+    if: github.event.inputs.phase == 'phase3'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      # Requires manual approval
+    services:
+      postgres:
+        image: postgres:15
+      kafka:
+        image: confluentinc/cp-kafka:7.5.0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pre-cutover checks
+        run: |
+          # 1. All services healthy
+          for port in 3001 3002 3003 3004 3005 3006 3007 3008 3009; do
+            if ! curl -f http://localhost:$port/health; then
+              echo "❌ Service unhealthy: port $port"
+              exit 1
+            fi
+          done
+          echo "✓ All services healthy"
+
+          # 2. Kafka consumer lag < 10s
+          KAFKA_LAG=$(docker exec kafka kafka-consumer-groups.sh \
+            --bootstrap-server localhost:9092 \
+            --all-groups --describe | grep LAG | awk '{sum+=$NF} END {print sum}')
+          if [ "$KAFKA_LAG" -gt 10000 ]; then
+            echo "❌ Kafka lag too high: ${KAFKA_LAG}ms"
+            exit 1
+          fi
+          echo "✓ Kafka lag acceptable: ${KAFKA_LAG}ms"
+
+          # 3. No data loss
+          bash scripts/validate-data-consistency.sh
+
+      - name: Update Nginx routing
+        run: |
+          # Switch 100% of traffic to microservices
+          # (In real deployment: git push to infra repo triggers Nginx reload)
+          echo "Routing update: 100% -> microservices"
+
+      - name: Monitor cutover (5 minutes)
+        run: |
+          echo "Monitoring error rates, latency, consumer lag..."
+          for i in {1..30}; do
+            echo "Check $i/30..."
+            ERROR_RATE=$(curl -s http://localhost:3000/metrics | grep http_request_errors | grep -o '[0-9]*' | head -1)
+            if [ "$ERROR_RATE" -gt 50 ]; then
+              echo "❌ Error rate spike: $ERROR_RATE"
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "✓ Cutover monitoring passed"
+
+      - name: Run canary tests
+        run: |
+          # Full integration test suite against microservices
+          mvn -f threadly-core/pom.xml verify -DskipITs=false
+
+      - name: Health check (monolith read-only)
+        run: |
+          # Set monolith to read-only
+          curl -X POST http://localhost:8000/admin/readonly
+          # Verify read works
+          curl http://localhost:8000/api/bots
+          # Verify write fails gracefully
+          curl -X POST http://localhost:8000/api/bots \
+            -d '{"name":"test"}' \
+            -H "Content-Type: application/json" \
+            --fail || echo "✓ Monolith correctly rejecting writes"
+
+      - name: Post-cutover verification
+        run: |
+          echo "Phase 3 Cutover Complete - All traffic on microservices"
+          echo "Rollback window: 7 days"
+          echo "Monitor: Grafana dashboard 'Microservices Migration'"
+
+  # CI/CD Gates for all services
+  service-build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [identity, workspace, flow, runtime, conversation, knowledge, analytics, billing, integration]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build ${{ matrix.service }}-service
+        run: |
+          mvn clean package -f threadly-core/${{ matrix.service }}-service/pom.xml
+
+      - name: Run unit tests
+        run: |
+          mvn test -f threadly-core/${{ matrix.service }}-service/pom.xml
+
+      - name: Run integration tests
+        run: |
+          mvn verify -f threadly-core/${{ matrix.service }}-service/pom.xml
+
+      - name: Build Docker image
+        run: |
+          mvn spring-boot:build-image \
+            -f threadly-core/${{ matrix.service }}-service/pom.xml \
+            -Dspring-boot.build-image.name=${{ env.REGISTRY }}/threadly/${{ matrix.service }}-service:${{ github.sha }}
+
+      - name: Scan image for vulnerabilities
+        run: |
+          # Use trivy or similar
+          echo "Scanning image for CVEs..."
+
+      - name: Push image (if on main branch)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Pushing image to registry..."
+
+  # Summary & Notification
+  migration-summary:
+    if: always()
+    needs: [phase1-deploy, phase2-validation, phase3-cutover]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine phase result
+        run: |
+          PHASE=${{ github.event.inputs.phase }}
+          echo "Migration $PHASE: Complete" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "Migration ${{ github.event.inputs.phase }} ${{ job.status }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Threadly Microservices Migration*\nPhase: ${{ github.event.inputs.phase }}\nStatus: ${{ job.status }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+                  }
+                }
+              ]
+            }

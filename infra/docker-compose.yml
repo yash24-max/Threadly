@@ -1,6 +1,24 @@
 version: "3.9"
 
 services:
+  # ── Service Discovery ──────────────────────────────────────────────────
+  consul:
+    image: consul:latest
+    restart: unless-stopped
+    command: agent -server -ui -bootstrap-expect=1 -client=0.0.0.0
+    ports:
+      - "8500:8500"   # HTTP API + UI
+      - "8600:8600/udp"  # DNS
+    volumes:
+      - consul_data:/consul/data
+    environment:
+      CONSUL_BIND_INTERFACE: eth0
+    healthcheck:
+      test: ["CMD", "consul", "version"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   # ── Databases ──────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
@@ -66,6 +84,97 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── Message Queue ──────────────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_RETENTION_HOURS: 168
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions.sh", "--bootstrap-server=localhost:9092"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    restart: on-failure
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: /bin/bash
+    command: |
+      -c "
+      kafka-topics.sh --create --topic user-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+      kafka-topics.sh --create --topic org-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+      kafka-topics.sh --create --topic flow-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+      kafka-topics.sh --create --topic session-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+      kafka-topics.sh --create --topic conversation-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+      kafka-topics.sh --create --topic kb-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+      kafka-topics.sh --create --topic analytics-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+      kafka-topics.sh --create --topic billing-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+      kafka-topics.sh --create --topic integration-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+      echo 'Kafka topics created successfully'
+      "
+
+  # ── API Gateway ────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - identity-service
+      - workspace-service
+      - flow-service
+      - runtime-service
+      - conversation-service
+      - knowledge-service
+      - analytics-service
+      - billing-service
+      - integration-service
+      - threadly-ai
+      - threadly-web
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   # ── Realtime ───────────────────────────────────────────────────────
   centrifugo:
     image: centrifugo/centrifugo:v5
@@ -86,31 +195,31 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── Application services ───────────────────────────────────────────
-  threadly-core:
+  # ── Java Microservices (9 services, ports 3001-3009) ──────────────────
+  identity-service:
     build:
       context: ../threadly-core
       dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: identity-service
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "3001:3001"
     environment:
+      SERVER_PORT: 3001
+      SPRING_APPLICATION_NAME: identity-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/threadly
       SPRING_DATASOURCE_USERNAME: threadly
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-threadly_dev}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: identity_service
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-threadly_dev}
-      THREADLY_AI_URL: http://threadly-ai:8081
-      CENTRIFUGO_URL: http://centrifugo:8000
-      CENTRIFUGO_API_KEY: ${CENTRIFUGO_HTTP_API_KEY:-dev_api_key}
-      CENTRIFUGO_TOKEN_SECRET: ${CENTRIFUGO_TOKEN_HMAC_SECRET:-dev_secret_change_in_prod}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
       JWT_PRIVATE_KEY_PATH: /app/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
-      S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: ${S3_BUCKET:-threadly-kb}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
     volumes:
       - ./keys:/app/keys:ro
     depends_on:
@@ -118,21 +227,339 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      centrifugo:
+      kafka:
+        condition: service_healthy
+      consul:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health | grep -q '\"status\":\"UP\"' || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 10
 
+  workspace-service:
+    build:
+      context: ../threadly-core
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: workspace-service
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      SERVER_PORT: 3002
+      SPRING_APPLICATION_NAME: workspace-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/threadly
+      SPRING_DATASOURCE_USERNAME: threadly
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-threadly_dev}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: workspace_service
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-threadly_dev}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  flow-service:
+    build:
+      context: ../threadly-core
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: flow-service
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    environment:
+      SERVER_PORT: 3003
+      SPRING_APPLICATION_NAME: flow-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/threadly
+      SPRING_DATASOURCE_USERNAME: threadly
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-threadly_dev}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: flow_service
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-threadly_dev}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  runtime-service:
+    build:
+      context: ../threadly-core
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: runtime-service
+    restart: unless-stopped
+    ports:
+      - "3004:3004"
+    environment:
+      SERVER_PORT: 3004
+      SPRING_APPLICATION_NAME: runtime-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/threadly
+      SPRING_DATASOURCE_USERNAME: threadly
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-threadly_dev}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: runtime_service
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-threadly_dev}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+      CENTRIFUGO_URL: http://centrifugo:8000
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_HTTP_API_KEY:-dev_api_key}
+      THREADLY_AI_URL: http://threadly-ai:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  conversation-service:
+    build:
+      context: ../threadly-core
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: conversation-service
+    restart: unless-stopped
+    ports:
+      - "3005:3005"
+    environment:
+      SERVER_PORT: 3005
+      SPRING_APPLICATION_NAME: conversation-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/threadly
+      SPRING_DATASOURCE_USERNAME: threadly
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-threadly_dev}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: conversation_service
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-threadly_dev}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+      CENTRIFUGO_URL: http://centrifugo:8000
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_HTTP_API_KEY:-dev_api_key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  knowledge-service:
+    build:
+      context: ../threadly-core
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: knowledge-service
+    restart: unless-stopped
+    ports:
+      - "3006:3006"
+    environment:
+      SERVER_PORT: 3006
+      SPRING_APPLICATION_NAME: knowledge-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/threadly
+      SPRING_DATASOURCE_USERNAME: threadly
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-threadly_dev}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: knowledge_service
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-threadly_dev}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-threadly-kb}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      THREADLY_AI_URL: http://threadly-ai:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3006/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  analytics-service:
+    build:
+      context: ../threadly-core
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: analytics-service
+    restart: unless-stopped
+    ports:
+      - "3007:3007"
+    environment:
+      SERVER_PORT: 3007
+      SPRING_APPLICATION_NAME: analytics-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/threadly
+      SPRING_DATASOURCE_USERNAME: threadly
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-threadly_dev}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: analytics_service
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-threadly_dev}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3007/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  billing-service:
+    build:
+      context: ../threadly-core
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: billing-service
+    restart: unless-stopped
+    ports:
+      - "3008:3008"
+    environment:
+      SERVER_PORT: 3008
+      SPRING_APPLICATION_NAME: billing-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/threadly
+      SPRING_DATASOURCE_USERNAME: threadly
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-threadly_dev}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: billing_service
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-threadly_dev}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3008/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  integration-service:
+    build:
+      context: ../threadly-core
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: integration-service
+    restart: unless-stopped
+    ports:
+      - "3009:3009"
+    environment:
+      SERVER_PORT: 3009
+      SPRING_APPLICATION_NAME: integration-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/threadly
+      SPRING_DATASOURCE_USERNAME: threadly
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-threadly_dev}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: integration_service
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-threadly_dev}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3009/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  # ── Supporting Services ────────────────────────────────────────────────
   threadly-ai:
     build:
       context: ../threadly-ai
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8081:8081"
+      - "8001:8001"
     environment:
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6333
@@ -145,13 +572,15 @@ services:
       VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
-      LANGFUSE_HOST: ${LANGFUSE_HOST:-http://langfuse:3000}
-      CORE_SERVICE_SECRET: ${CORE_AI_SHARED_SECRET:-dev_shared_secret}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
       qdrant:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8081/health')\" 2>/dev/null || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\" 2>/dev/null || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -170,7 +599,7 @@ services:
       NEXT_PUBLIC_CENTRIFUGO_URL: ws://localhost:8000/connection/websocket
       NEXT_PUBLIC_CDN_URL: http://localhost:3000
     depends_on:
-      threadly-core:
+      nginx:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\""]
@@ -186,6 +615,10 @@ services:
       - "9090:9090"
     volumes:
       - ./grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
 
   grafana:
     image: grafana/grafana:latest
@@ -194,29 +627,22 @@ services:
       - "3001:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-
-  langfuse:
-    image: langfuse/langfuse:latest
-    restart: unless-stopped
-    profiles: ["observability"]
-    ports:
-      - "3002:3000"
-    environment:
-      DATABASE_URL: postgresql://threadly:${POSTGRES_PASSWORD:-threadly_dev}@postgres:5432/langfuse
-      NEXTAUTH_URL: http://localhost:3002
-      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-langfuse_dev_secret}
-      SALT: ${LANGFUSE_SALT:-langfuse_dev_salt}
-      TELEMETRY_ENABLED: "false"
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      - prometheus
 
 volumes:
+  consul_data:
   postgres_data:
   redis_data:
   qdrant_data:
   minio_data:
+  zookeeper_data:
+  zookeeper_logs:
+  kafka_data:
+  prometheus_data:
   grafana_data:

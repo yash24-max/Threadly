@@ -1,0 +1,84 @@
+spring:
+  application:
+    name: workspace-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:threadly}
+    username: ${DB_USER:threadly}
+    password: ${DB_PASSWORD:dev}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: workspace_service
+
+  flyway:
+    baseline-on-migrate: false
+    enabled: true
+    locations: classpath:db/migration
+    schemas: workspace_service
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: workspace-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+  cloud:
+    consul:
+      host: ${CONSUL_HOST:localhost}
+      port: ${CONSUL_PORT:8500}
+      discovery:
+        instance-id: workspace-service-${random.uuid}
+        service-name: workspace-service
+        health-check-path: /health
+        health-check-interval: 10s
+        port: 3002
+        tags:
+          - service=workspace-service
+          - version=0.1.0
+
+server:
+  port: 3002
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    metrics:
+      export:
+        enabled: true
+        endpoint: http://${OTEL_EXPORTER_OTLP_ENDPOINT:localhost:4317}
+    tracing:
+      endpoint: http://${OTEL_EXPORTER_OTLP_ENDPOINT:localhost:4317}
+
+logging:
+  level:
+    root: INFO
+    dev.threadly: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"

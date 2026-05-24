@@ -1,0 +1,130 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts
+  namespace: threadly
+data:
+  10-create-schemas.sql: |
+    CREATE SCHEMA IF NOT EXISTS identity_service;
+    CREATE SCHEMA IF NOT EXISTS workspace_service;
+    CREATE SCHEMA IF NOT EXISTS flow_service;
+    CREATE SCHEMA IF NOT EXISTS runtime_service;
+    CREATE SCHEMA IF NOT EXISTS conversation_service;
+    CREATE SCHEMA IF NOT EXISTS knowledge_service;
+    CREATE SCHEMA IF NOT EXISTS analytics_service;
+    CREATE SCHEMA IF NOT EXISTS billing_service;
+    CREATE SCHEMA IF NOT EXISTS integration_service;
+    GRANT ALL PRIVILEGES ON SCHEMA identity_service TO threadly;
+    GRANT ALL PRIVILEGES ON SCHEMA workspace_service TO threadly;
+    GRANT ALL PRIVILEGES ON SCHEMA flow_service TO threadly;
+    GRANT ALL PRIVILEGES ON SCHEMA runtime_service TO threadly;
+    GRANT ALL PRIVILEGES ON SCHEMA conversation_service TO threadly;
+    GRANT ALL PRIVILEGES ON SCHEMA knowledge_service TO threadly;
+    GRANT ALL PRIVILEGES ON SCHEMA analytics_service TO threadly;
+    GRANT ALL PRIVILEGES ON SCHEMA billing_service TO threadly;
+    GRANT ALL PRIVILEGES ON SCHEMA integration_service TO threadly;
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: threadly
+type: Opaque
+stringData:
+  username: threadly
+  password: threadly_prod
+  database: threadly
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: threadly
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: threadly
+spec:
+  serviceName: postgres-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: database
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U threadly
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U threadly
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: postgres-init-scripts
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi

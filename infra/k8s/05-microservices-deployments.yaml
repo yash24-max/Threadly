@@ -1,0 +1,253 @@
+---
+# Generic microservice deployment template (repeat for each service)
+# Services: identity, workspace, flow, runtime, conversation, knowledge, analytics, billing, integration
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: microservices-secrets
+  namespace: threadly
+type: Opaque
+stringData:
+  postgres-url: jdbc:postgresql://postgres-service:5432/threadly
+  postgres-user: threadly
+  postgres-password: threadly_prod
+  redis-host: redis-service
+  redis-port: "6379"
+  redis-password: threadly_prod
+  kafka-servers: kafka-0.kafka-service.threadly.svc.cluster.local:29092,kafka-1.kafka-service.threadly.svc.cluster.local:29092,kafka-2.kafka-service.threadly.svc.cluster.local:29092
+  consul-host: consul-service
+  consul-port: "8500"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-service
+  namespace: threadly
+spec:
+  selector:
+    app: identity-service
+  ports:
+    - port: 80
+      targetPort: 3001
+      protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-service
+  namespace: threadly
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: identity-service
+  template:
+    metadata:
+      labels:
+        app: identity-service
+    spec:
+      containers:
+        - name: identity-service
+          image: threadly/identity-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3001
+          env:
+            - name: SERVER_PORT
+              value: "3001"
+            - name: SPRING_APPLICATION_NAME
+              value: "identity-service"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: postgres-url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: postgres-user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: postgres-password
+            - name: SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA
+              value: "identity_service"
+            - name: SPRING_REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: redis-host
+            - name: SPRING_REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: redis-port
+            - name: SPRING_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: redis-password
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: kafka-servers
+            - name: SPRING_CLOUD_CONSUL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: consul-host
+            - name: SPRING_CLOUD_CONSUL_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: consul-port
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: workspace-service
+  namespace: threadly
+spec:
+  selector:
+    app: workspace-service
+  ports:
+    - port: 80
+      targetPort: 3002
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workspace-service
+  namespace: threadly
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: workspace-service
+  template:
+    metadata:
+      labels:
+        app: workspace-service
+    spec:
+      containers:
+        - name: workspace-service
+          image: threadly/workspace-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3002
+          env:
+            - name: SERVER_PORT
+              value: "3002"
+            - name: SPRING_APPLICATION_NAME
+              value: "workspace-service"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: postgres-url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: postgres-user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: postgres-password
+            - name: SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA
+              value: "workspace_service"
+            - name: SPRING_REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: redis-host
+            - name: SPRING_REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: redis-port
+            - name: SPRING_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: redis-password
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: kafka-servers
+            - name: SPRING_CLOUD_CONSUL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: consul-host
+            - name: SPRING_CLOUD_CONSUL_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: microservices-secrets
+                  key: consul-port
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+
+# Repeat similar structure for flow-service (3003), runtime-service (3004),
+# conversation-service (3005), knowledge-service (3006), analytics-service (3007),
+# billing-service (3008), integration-service (3009)
+#
+# Each deployment differs only by:
+# - Service name and labels
+# - Port number (3003-3009)
+# - SPRING_APPLICATION_NAME
+# - SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA
+# - Image name
+#
+# Template parameters shown above are sufficient for generation

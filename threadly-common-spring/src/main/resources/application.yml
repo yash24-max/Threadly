@@ -1,0 +1,99 @@
+spring:
+  application:
+    name: threadly-common-spring
+
+  # JPA/Hibernate
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate # Do not auto-create schema; use Flyway migrations
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  # Kafka
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      retries: 3
+      compression-type: snappy
+    consumer:
+      group-id: ${SPRING_APPLICATION_NAME:threadly-service}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      max-poll-records: 100
+
+  # Security
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER:https://threadly.dev}
+          jwk-set-uri: ${JWT_JWKS_URL:http://identity-service:3001/.well-known/jwks.json}
+
+# Management / Observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    enabled: ${TRACING_ENABLED:true}
+    sampling:
+      probability: 1.0
+  otlp:
+    metrics:
+      export:
+        enabled: true
+        endpoint: ${OTLP_ENDPOINT:http://otel-collector:4317}
+    tracing:
+      endpoint: ${OTLP_ENDPOINT:http://otel-collector:4317}
+
+# Threadly Configuration
+threadly:
+  jwt:
+    issuer: ${JWT_ISSUER:https://threadly.dev}
+    public-key-url: ${JWT_JWKS_URL:http://identity-service:3001/.well-known/jwks.json}
+
+  services:
+    identity-service:
+      url: ${IDENTITY_SERVICE_URL:http://identity-service:3001}
+    workspace-service:
+      url: ${WORKSPACE_SERVICE_URL:http://workspace-service:3002}
+    flow-service:
+      url: ${FLOW_SERVICE_URL:http://flow-service:3003}
+    runtime-service:
+      url: ${RUNTIME_SERVICE_URL:http://runtime-service:3004}
+    conversation-service:
+      url: ${CONVERSATION_SERVICE_URL:http://conversation-service:3005}
+    knowledge-service:
+      url: ${KNOWLEDGE_SERVICE_URL:http://knowledge-service:3006}
+    integration-service:
+      url: ${INTEGRATION_SERVICE_URL:http://integration-service:3009}
+
+  outbox:
+    batch-size: 100
+    polling-interval: 5000 # milliseconds
+
+logging:
+  level:
+    root: INFO
+    dev.threadly: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.kafka: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

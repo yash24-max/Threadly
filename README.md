@@ -27,7 +27,7 @@ scripts/          One-shot dev scripts (bootstrap, codegen, seed)
 Prerequisites: Docker Desktop, Java 21, Node 20+, Python 3.12, Make.
 
 ```bash
-make up          # boots postgres, redis, qdrant, centrifugo, minio, core, ai, web
+make up          # boots postgres, redis, qdrant, kafka, consul, minio + 9 microservices + ai, web
 make seed        # creates a demo org + bot
 make test        # runs the full test suite
 make codegen     # regenerates typed API hooks from OpenAPI
@@ -35,9 +35,17 @@ make codegen     # regenerates typed API hooks from OpenAPI
 
 Open:
 - Web app: http://localhost:3000
-- API docs: http://localhost:8080/swagger-ui
-- Centrifugo admin: http://localhost:8000 (password in `.env`)
-- Grafana: http://localhost:3001 (admin / admin)
+- API Gateway: http://localhost:8080
+- Identity Service: http://localhost:3001/health
+- Workspace Service: http://localhost:3002/health
+- Flow Service: http://localhost:3003/health
+- Runtime Service: http://localhost:3004/health
+- Conversation Service: http://localhost:3005/health
+- Knowledge Service: http://localhost:3006/health
+- Analytics Service: http://localhost:3007/health
+- Billing Service: http://localhost:3008/health
+- Integration Service: http://localhost:3009/health
+- Grafana: http://localhost:3000/monitoring (admin / admin)
 
 ---
 
@@ -60,6 +68,15 @@ Open:
 | [12-design-system.md](docs/12-design-system.md) | Tokens, motion, typography |
 | [13-security.md](docs/13-security.md) | Threat model, tenancy, secrets |
 | [14-observability.md](docs/14-observability.md) | Tracing, logs, metrics, LLM cost |
+| [15-integrations.md](docs/15-integrations.md) | External integrations (Stripe, Slack, etc.) |
+| [16-billing.md](docs/16-billing.md) | Pricing, metering, Stripe webhooks |
+| [17-crm.md](docs/17-crm.md) | Lead tracking, handoff, CRM sync |
+| [18-microservices-architecture.md](docs/18-microservices-architecture.md) | Microservices topology, database-per-service, Kafka events |
+| [DEPLOYMENT_PLAN.md](docs/DEPLOYMENT_PLAN.md) | Phase 1-4 migration timeline + go/no-go criteria |
+| [RUNBOOK_MIGRATION.md](docs/RUNBOOK_MIGRATION.md) | Step-by-step Phase 1-3 migration procedures |
+| [RUNBOOK_SERVICE_RESTART.md](docs/RUNBOOK_SERVICE_RESTART.md) | Emergency service restart procedures |
+| [RUNBOOK_KAFKA_RECOVERY.md](docs/RUNBOOK_KAFKA_RECOVERY.md) | Kafka consumer lag + DLQ recovery |
+| [RUNBOOK_ROLLBACK.md](docs/RUNBOOK_ROLLBACK.md) | Emergency rollback from Phase 3 to Phase 1 |
 
 ---
 

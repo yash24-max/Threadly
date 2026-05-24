@@ -10,15 +10,28 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Generate a trace ID for distributed tracing across Nginx gateway and microservices.
+ * Format: 32-char hex (OpenTelemetry trace ID format)
+ */
+function generateTraceId(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { token?: string } = {}
 ): Promise<T> {
   const { token, ...rest } = options;
+  const traceId = generateTraceId();
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...rest,
     headers: {
       "Content-Type": "application/json",
+      "X-Trace-ID": traceId,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...rest.headers,
     },

@@ -1,0 +1,275 @@
+{
+  "dashboard": {
+    "title": "Threadly Microservices Migration Dashboard",
+    "tags": ["migration", "microservices", "phase2", "phase3"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Health Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=~\"identity-service|workspace-service|flow-service|runtime-service|conversation-service|knowledge-service|analytics-service|billing-service|integration-service\"}",
+            "legendFormat": "{{job}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "orientation": "auto",
+          "textMode": "auto",
+          "reduceOptions": {
+            "values": false,
+            "limit": 0,
+            "calcs": ["lastNotNull"]
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Request Latency (Dual-Write Phase 2)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{service=~\".*-service\"}[5m]))",
+            "legendFormat": "{{service}} p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{service=~\".*-service\"}[5m]))",
+            "legendFormat": "{{service}} p99"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Dual-Write Lag (ms) - Shadow Writes to Services",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(dual_write_lag_ms_sum{service=~\".*-service\"}[5m]) / rate(dual_write_lag_ms_count{service=~\".*-service\"}[5m])",
+            "legendFormat": "{{service}} avg lag"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "custom": {
+              "hideFrom": {"tooltip": false, "viz": false, "legend": false}
+            }
+          },
+          "overrides": []
+        },
+        "alert": {
+          "name": "DualWriteLagHigh",
+          "conditions": [
+            {
+              "evaluator": {"params": [1000], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "type": "query"
+            }
+          ],
+          "frequency": "1m",
+          "handler": 1,
+          "message": "Dual-write lag > 1s on {{service}}"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Dual-Write Failures (counter)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(dual_write_failures_total{service=~\".*-service\"}[5m])",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "orientation": "auto"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Kafka Consumer Lag (records behind)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "kafka_consumer_lag{consumer_group=~\".*-service-consumer\"}",
+            "legendFormat": "{{consumer_group}} / {{topic}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "alert": {
+          "name": "KafkaConsumerLagHigh",
+          "conditions": [
+            {
+              "evaluator": {"params": [60000], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "type": "query"
+            }
+          ],
+          "frequency": "2m",
+          "handler": 1,
+          "message": "Kafka consumer lag > 60s for {{consumer_group}}"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Database Write Consistency (rows/sec)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(pg_stat_user_tables_n_tup_ins[5m])",
+            "legendFormat": "monolith inserts"
+          },
+          {
+            "expr": "rate(pg_stat_user_tables_n_tup_upd[5m])",
+            "legendFormat": "monolith updates"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Error Rate by Service (%)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "100 * (rate(http_requests_total{status=~\"5..\",service=~\".*-service\"}[5m]) / rate(http_requests_total{service=~\".*-service\"}[5m]))",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent"
+          }
+        },
+        "alert": {
+          "name": "ErrorRateHigh",
+          "conditions": [
+            {
+              "evaluator": {"params": [5], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "type": "query"
+            }
+          ],
+          "frequency": "2m",
+          "handler": 1,
+          "message": "Error rate > 5% on {{service}}"
+        }
+      },
+      {
+        "id": 8,
+        "title": "Circuit Breaker Status (Open/Closed)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "resilience4j_circuitbreaker_state{state=~\"open|closed\"}",
+            "legendFormat": "{{name}} - {{state}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "textMode": "auto"
+        }
+      },
+      {
+        "id": 9,
+        "title": "Migration Phase Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "migration_phase_current{phase=~\"phase1|phase2|phase3\"}",
+            "legendFormat": "{{phase}}"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 32},
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none"
+        }
+      },
+      {
+        "id": 10,
+        "title": "Data Sync Completeness (%)",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "100 * (service_data_rows / monolith_data_rows)",
+            "legendFormat": "Services synced"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 32},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "max": 100,
+            "min": 0
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "OpenTelemetry Trace Volume (traces/sec)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(otel_traces_total[5m])",
+            "legendFormat": "traces/sec"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 32}
+      }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 38,
+    "style": "dark",
+    "templating": {
+      "list": [
+        {
+          "name": "service",
+          "type": "query",
+          "datasource": "Prometheus",
+          "query": "label_values(up{job=~\".*-service\"}, job)",
+          "multi": true,
+          "includeAll": true,
+          "sort": 1
+        },
+        {
+          "name": "phase",
+          "type": "custom",
+          "options": ["phase1", "phase2", "phase3"],
+          "current": {"text": "phase2", "value": "phase2"},
+          "multi": false
+        }
+      ]
+    }
+  }
+}

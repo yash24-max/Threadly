@@ -1,0 +1,242 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: threadly
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    error_log /var/log/nginx/error.log warn;
+    pid /var/run/nginx.pid;
+
+    events {
+      worker_connections 1024;
+    }
+
+    http {
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+
+      log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+      access_log /var/log/nginx/access.log main;
+
+      sendfile on;
+      tcp_nopush on;
+      tcp_nodelay on;
+      keepalive_timeout 65;
+      types_hash_max_size 2048;
+      client_max_body_size 50m;
+
+      limit_req_zone $binary_remote_addr zone=general:10m rate=100r/s;
+      limit_req_zone $binary_remote_addr zone=auth:10m rate=5r/m;
+      limit_req_zone $binary_remote_addr zone=widget:10m rate=1000r/s;
+
+      upstream identity_service { server identity-service:3001; }
+      upstream workspace_service { server workspace-service:3002; }
+      upstream flow_service { server flow-service:3003; }
+      upstream runtime_service { server runtime-service:3004; }
+      upstream conversation_service { server conversation-service:3005; }
+      upstream knowledge_service { server knowledge-service:3006; }
+      upstream analytics_service { server analytics-service:3007; }
+      upstream billing_service { server billing-service:3008; }
+      upstream integration_service { server integration-service:3009; }
+      upstream threadly_ai { server threadly-ai:8001; }
+      upstream threadly_web { server threadly-web:3000; }
+
+      server {
+        listen 8080;
+        server_name _;
+
+        add_header 'Access-Control-Allow-Origin' '$http_origin' always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PATCH, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
+
+        if ($request_method = 'OPTIONS') { return 204; }
+
+        location /health {
+          access_log off;
+          return 200 "OK\n";
+          add_header Content-Type text/plain;
+        }
+
+        location ~ ^/auth/ {
+          limit_req zone=auth burst=10 nodelay;
+          proxy_pass http://identity_service;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Authorization $http_authorization;
+        }
+
+        location ~ ^/(orgs|bots|workspace)/ {
+          proxy_pass http://workspace_service;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Authorization $http_authorization;
+        }
+
+        location ~ ^/flows/ {
+          proxy_pass http://flow_service;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Authorization $http_authorization;
+        }
+
+        location ~ ^/(sessions|realtime)/ {
+          limit_req zone=widget burst=50 nodelay;
+          proxy_pass http://runtime_service;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Authorization $http_authorization;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+        }
+
+        location ~ ^/conversations/ {
+          proxy_pass http://conversation_service;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Authorization $http_authorization;
+        }
+
+        location ~ ^/kb/ {
+          proxy_pass http://knowledge_service;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Authorization $http_authorization;
+        }
+
+        location ~ ^/dashboard/ {
+          proxy_pass http://analytics_service;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Authorization $http_authorization;
+        }
+
+        location ~ ^/billing/ {
+          proxy_pass http://billing_service;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Authorization $http_authorization;
+        }
+
+        location ~ ^/integrations/ {
+          proxy_pass http://integration_service;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Authorization $http_authorization;
+        }
+
+        location ~ ^/ai/ {
+          proxy_pass http://threadly_ai;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Authorization $http_authorization;
+        }
+
+        location ~ ^/(app|builder|dashboard) {
+          proxy_pass http://threadly_web;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location / {
+          proxy_pass http://threadly_web;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        }
+      }
+    }
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: threadly
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: threadly
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
