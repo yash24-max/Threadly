@@ -7,6 +7,240 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.2.0-alpha] — Sprint 3 (In Progress)
+
+> Sprint 3 started 2026-05-24. 67 tasks across 6 agents.
+> Focus: n8n feature parity, growth features (integrations, CRM, billing, A/B testing, email sequences).
+
+### Added — Flow Triggers
+
+#### Cron-Based Flow Triggers
+- `CronTrigger` entity — schedule flows on cron expressions (Quartz Scheduler integration)
+- `CronTriggerController` — create, list, update, delete scheduled flows
+- `CronTriggerJob` — background job executor for scheduled flow invocations
+- Timezone support for cron schedules
+
+#### Inbound Webhook Triggers
+- `InboundWebhook` entity — generate HMAC-validated webhook URLs per bot
+- `POST /webhooks/trigger/{token}` — public endpoint to trigger flows with `content-type: application/json` payload
+- HMAC-SHA256 signature validation via `X-Threadly-Signature` header
+- Token generation + expiration management
+
+### Added — Advanced Flow Nodes
+
+#### Loop/ForEach Node
+- `ForEachNodeExecutor` — iterate over array session variable
+- Execute child subflow N times with each array element in scope
+- Break/continue support
+
+#### Subflows / Reusable Blocks
+- `SubflowDefinition` entity — encapsulate reusable flow logic
+- `SubflowNodeExecutor` — invoke subflow with parameter passing
+- Subflow version control independent of parent flow
+- Scoped variable passing (input/output mappings)
+
+#### Error Handling Branches
+- `ErrorNodeExecutor` — catch errors from upstream nodes
+- `FlowRuntime` onError routing — define error handler edges
+- Error context (type, message) available in error handler scope
+
+#### Integration Node
+- `IntegrationNodeExecutor` — generic executor for 20 pre-built integrations
+- `IntegrationPlugin` interface — standardized plugin pattern
+- `IntegrationRegistry` — plugin discovery + dynamic loading
+- Per-node integration action configuration (Slack post, Gmail send, HubSpot upsert, etc.)
+
+### Added — Integrations (20 Pre-Built)
+
+#### Integration Connection Management
+- `IntegrationConnection` entity — store OAuth tokens, refresh token, expiration
+- `IntegrationConnectionController` — connect, disconnect, refresh token
+- Standardized OAuth 2.0 flow (code → token, refresh on expiration)
+- Connection-scoped rate limiting and error tracking
+
+#### Supported Integrations
+1. **Slack** — post messages to channels, create threads, add reactions
+2. **Gmail** — send emails, draft creation, label management
+3. **HubSpot** — create/update contacts, companies, deals
+4. **Notion** — create pages, update databases, append blocks
+5. **Google Sheets** — append rows, update cells, batch operations
+6. **Airtable** — create/update records, bulk operations
+7. **Twilio** — send SMS, voice calls, WhatsApp messages
+8. **SendGrid** — send emails via template, manage contacts
+9. **Mailchimp** — add subscribers, trigger campaigns, manage lists
+10. **Shopify** — create orders, update products, manage customers
+11. **Discord** — send messages, create threads, manage roles
+12. **GitHub** — create issues, push commits, manage repos
+13. **Linear** — create issues, update cycles, manage projects
+14. **Jira** — create issues, transition tickets, add comments
+15. **Stripe** — create charges, manage subscriptions, refunds
+16. **Mixpanel** — track events, update user profiles
+17. **Segment** — send events, track users, audience sync
+18. **Make.com** — trigger scenarios via webhook
+19. **Microsoft Teams** — send messages, create channels
+20. **Salesforce** — create leads, update accounts, manage opportunities
+
+### Added — CRM Module
+
+#### Lead Management
+- `Lead` entity — email, phone, name, status (NEW/QUALIFIED/CONVERTED/LOST), custom fields JSONB
+- `LeadController` — CRUD endpoints + bulk operations
+- `LeadCaptureController` — auto-capture from widget form submissions
+- Lead deduplication on email/phone
+
+#### Lead Enrichment
+- `LeadTag` — tagging system for lead segmentation
+- `CustomFieldDefinition` — per-bot custom field schema
+- `LeadNote` — private notes with author + timestamp
+- `LeadTimelineEvent` — interaction history (conversation opened, handoff, email sent, etc.)
+
+#### CRM Pipeline
+- Lead status workflow: NEW → QUALIFIED → CONVERTED (or LOST)
+- Pipeline stage tracking in `LeadTimelineEvent`
+- Bulk status update endpoint
+
+### Added — Email Sequences
+
+#### Sequence Engine
+- `EmailSequence` entity — multi-step email campaigns
+- `EmailSequenceStep` — individual email with delay, subject, body
+- `EmailSequenceEnrollment` — track lead enrollment in sequences
+- Trigger on lead creation, lead tag, conversation handoff, or manual enrollment
+
+#### Delivery
+- `SequenceStepScheduler` — background job scheduler (Quartz)
+- SMTP/SendGrid integration for actual email delivery
+- Bounce/complaint handling via webhook callbacks
+- Unsubscribe link generation + tracking
+
+### Added — Billing & Subscriptions
+
+#### Stripe Integration
+- `BillingController` — checkout session creation, subscription management
+- `StripeWebhookController` — handle charge.succeeded, subscription.updated, subscription.deleted
+- `BillingService` — create subscription, upgrade/downgrade plan, cancel
+- `PlanFeatureGate` — enforce plan limits (conversation count, KB size, members)
+
+#### Usage Metering
+- `BillingMeterJob` — periodic job to aggregate daily conversation + KB usage
+- `BillingUsage` entity — daily usage snapshots per subscription
+- Overage tracking (pay-per-use add-on model)
+
+#### Pricing Plans
+- **FREE:** $0/mo, 1 bot, 500 conv/mo, 1 KB (1 GB), 1 member
+- **PRO:** $29/mo, 5 bots, 5000 conv/mo, 50 KB (50 GB), 5 members, A/B testing, CSV export
+- **BUSINESS:** $99/mo, unlimited bots, 50k conv/mo, unlimited KB, 25 members, white-label, SSO
+- **ENTERPRISE:** Custom pricing, dedicated support, SLA
+
+### Added — A/B Testing
+
+#### Test Management
+- `AbTest` entity — traffic split %, control/treatment variants, hypothesis
+- `AbTestVariant` — flow variant ID + variant name + traffic %
+- `AbTestConversion` entity — track conversions per variant (visitor completed flow, etc.)
+
+#### Variant Assignment
+- Visitor assignment to variant via murmur3 hash (deterministic, sticky)
+- Traffic split enforcement in `FlowRuntime`
+- Conversion event capture
+
+#### Results & Reporting
+- `GET /v1/ab-tests/{id}/results` — conversion rate, confidence interval, winner declaration
+- Chi-square significance testing (95% confidence)
+
+### Added — Frontend Enhancements
+
+#### Bot Management
+- `POST /v1/bots/{id}/clone` — deep copy flow, settings, theme, KB
+- One-click "Duplicate" button in bot list UI
+
+#### Flow Templates
+- 20+ pre-built templates (customer support, FAQ, lead qualification, survey, appointment booking, etc.)
+- `GET /v1/templates` — list available templates
+- `POST /v1/bots/{id}/from-template` — create new bot from template
+
+#### UI Overhaul
+- Dark canvas background (`bg-neutral-950`) inspired by n8n
+- Clean sidebar + properties panel (chatbotbuilder.net-style)
+- Node catalog with 20+ types (integration, cron, webhook, subflow, foreach, error-handler, ab-test, send-sms, send-slack, create-lead, update-lead, send-sequence)
+- Integration marketplace page with OAuth connection flow
+- CRM contacts list, pipeline Kanban, contact profile with timeline
+- Billing page with plan cards, usage meters, invoice table
+- Analytics CSV export + funnel chart (Recharts) + cohort retention analysis
+- A/B test management UI (`/bots/[id]/ab-tests` — create test, set traffic split %, view results)
+- Email sequence builder (`/sequences` — step builder with delay config)
+
+### Added — Widget Enhancements
+
+#### Lead Capture Form
+- Pre-chat form component (email, phone, name, custom fields)
+- Configurable required fields per bot
+- Form submission to `POST /v1/bots/{id}/leads/capture`
+
+#### CSAT Widget
+- Post-conversation 1–5 star satisfaction rating
+- `CsatWidget` component in chat footer
+- Submission to `POST /v1/conversations/{id}/csat`
+
+#### Knowledge Base Improvements
+- URL scraping (`url_scraper.py` — BeautifulSoup + Playwright, `robots.txt` respect)
+- Sitemap ingestion (`sitemap_parser.py` — parse XML, enqueue URLs for scraping)
+- Cohere reranker (complete implementation, fully opt-in per bot)
+- Document metadata indexing (source URL, upload date, language, type)
+
+### Added — Analytics Enhancements
+
+#### Data Export
+- CSV export of conversation analytics (date, conversations, messages, cost, handoff %)
+- `GET /v1/bots/{id}/analytics/export`
+
+#### Visualization
+- Funnel chart (Recharts): conversations started → completed → handed off → closed
+- Cohort retention analysis: returning visitor tracking per signup cohort
+
+### Added — Testing & Quality
+
+#### Integration Tests
+- `LeadIntegrationTest.java` — CRUD, bulk operations, deduplication
+- `BillingIntegrationTest.java` — checkout, webhook events, plan enforcement
+- `AbTestIntegrationTest.java` — test creation, traffic split, conversion tracking
+- `IntegrationPluginTest.java` — mock external APIs, executor validation
+- `EmailSequenceIntegrationTest.java` — enrollment, step scheduling, delivery
+
+#### E2E Tests
+- Playwright: full happy path (login → create bot → add nodes → publish → embed → send message → see reply → lead captured)
+- Widget e2e: lead form capture, CSAT submission, file uploads
+
+#### Performance
+- k6 load test: 500 concurrent widget connections
+- Measure message latency under load
+
+### Added — Infrastructure & Ops
+
+#### Database Migrations
+- **V7:** `integration_connections` table (org_id, integration_type, access_token, refresh_token, expires_at)
+- **V8:** `billing_subscriptions` table (org_id, plan_id, stripe_subscription_id, status, current_period_end)
+- **V9:** `billing_usage` table (subscription_id, billing_date, conversation_count, kb_size_gb)
+- **V10:** CRM tables (leads, lead_notes, lead_timeline_events, lead_tags, custom_field_definitions)
+- **V11:** `subflow_definitions` table
+- **V12:** Email sequence tables (email_sequences, email_sequence_steps, email_sequence_enrollments)
+- **V13:** `ab_tests`, `ab_test_variants`, `ab_test_conversions`
+- **V14:** `csat_ratings` table
+
+#### Docker Compose
+- MailHog service (dev SMTP server, port 1025 + 8025 web UI)
+- Stripe CLI container (webhook forwarding to `localhost:8080/webhooks/stripe`)
+
+#### Observability
+- Grafana dashboard panels: active email sequences, CRM lead funnel, Stripe MRR meter, integration call rate/error
+- Application metrics: active sequences, leads created, stripe MRR
+
+#### API Documentation
+- Full OpenAPI 3.0 spec update (all Sprint 3 endpoints)
+- Swagger UI generated client SDKs (Java, Python, TypeScript)
+
+---
+
 ## [Unreleased] — Sprint 2
 
 > Sprint 2 started 2026-05-21. Backend Agent and AI+Widget Agent complete.

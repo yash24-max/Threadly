@@ -1,7 +1,7 @@
 # Threadly — Feature Registry
 
 > Canonical list of all product features with user stories, status, and key files.
-> Updated: 2026-05-23 · 38 features across Phase 0 and Sprint 2.
+> Updated: 2026-05-24 · 70 features across Phase 0, Sprint 2, and Sprint 3.
 
 ---
 
@@ -18,6 +18,18 @@
 | F029–F031 | Realtime & Widget |
 | F032–F035 | Team & Security |
 | F036–F038 | Analytics & Observability |
+| F039–F041 | Flow Triggers (Sprint 3) |
+| F042–F046 | Advanced Flow Nodes (Sprint 3) |
+| F047–F048 | Integration Library (Sprint 3) |
+| F049–F051 | CRM & Contacts (Sprint 3) |
+| F052–F053 | Email Sequences (Sprint 3) |
+| F054–F055 | Billing & Subscriptions (Sprint 3) |
+| F056–F057 | A/B Testing (Sprint 3) |
+| F058–F059 | Bot Management Enhancements (Sprint 3) |
+| F060–F062 | Knowledge Base Enhancements (Sprint 3) |
+| F063–F065 | Widget Enhancements (Sprint 3) |
+| F066–F068 | Analytics Enhancements (Sprint 3) |
+| F069–F070 | Frontend UX (Sprint 3) |
 
 ---
 
@@ -636,3 +648,533 @@
 - `threadly-ai/app/routes/complete.py`
 
 **API endpoints:** Traces sent to Langfuse cloud/self-hosted; no Threadly-facing endpoint
+
+---
+
+## Flow Triggers (Sprint 3)
+
+### F039 — Cron/Scheduled Triggers
+
+**User story:** As a workflow automator, I can schedule flows to run at specific times (e.g., daily at 9am) so that I can automate routine tasks like sending digests or reminders without manual intervention.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/triggers/CronTriggerController.java`
+- `threadly-core/src/main/java/dev/threadly/core/triggers/CronTriggerJob.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/CronTrigger.java`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/triggers/cron`
+- `GET /v1/bots/{id}/triggers/cron`
+- `PUT /v1/bots/{id}/triggers/cron/{triggerId}`
+- `DELETE /v1/bots/{id}/triggers/cron/{triggerId}`
+
+---
+
+### F040 — Inbound Webhook Triggers
+
+**User story:** As a system integrator, I can trigger bot flows via HTTP POST webhook so that external systems can initiate conversations programmatically.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/triggers/InboundWebhookController.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/InboundWebhook.java`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/triggers/webhooks`
+- `GET /v1/bots/{id}/triggers/webhooks`
+- `POST /webhooks/trigger/{token}` (public, HMAC-validated)
+
+---
+
+### F041 — Per-Node Test Mode
+
+**User story:** As a flow designer, I can test individual nodes with mock input data without running the entire flow so that I can debug complex logic quickly.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/flow/NodeTestController.java`
+- `threadly-ai/app/routes/node_test.py`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/flow/nodes/{nodeId}/test`
+
+---
+
+## Advanced Flow Nodes (Sprint 3)
+
+### F042 — Loop/ForEach Node
+
+**User story:** As a flow designer, I can iterate over array variables so that I can process batches of items in a single conversation (e.g., upsert multiple leads).
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/runtime/ForEachNodeExecutor.java`
+
+**API endpoints:** None (runtime-internal)
+
+---
+
+### F043 — Subflow/Reusable Blocks
+
+**User story:** As a flow designer, I can create reusable subflows so that I can reduce duplication and maintain common logic in a single place.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/runtime/SubflowNodeExecutor.java`
+- `threadly-core/src/main/java/dev/threadly/core/flow/SubflowController.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/SubflowDefinition.java`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/subflows`
+- `GET /v1/bots/{id}/subflows`
+- `PUT /v1/bots/{id}/subflows/{subflowId}`
+- `DELETE /v1/bots/{id}/subflows/{subflowId}`
+
+---
+
+### F044 — Error Handler Node
+
+**User story:** As a flow designer, I can define error handling paths so that failures in one branch don't crash the entire flow.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/runtime/ErrorNodeExecutor.java`
+- `threadly-core/src/main/java/dev/threadly/core/flow/FlowRuntime.java` (onError routing)
+
+**API endpoints:** None (runtime-internal)
+
+---
+
+### F045 — Variable Scoping
+
+**User story:** As a flow designer, I can define global, local, and session-scoped variables so that I have fine-grained control over variable lifetime and visibility.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/runtime/VariableScopeService.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/GlobalVariable.java`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/variables/global`
+- `GET /v1/bots/{id}/variables`
+
+---
+
+### F046 — Integration Node Executor
+
+**User story:** As a flow designer, I can add pre-built integration nodes (Slack, Gmail, etc.) so that I can send messages and create records without custom API calls.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/integration/IntegrationNodeExecutor.java`
+- `threadly-core/src/main/java/dev/threadly/core/integration/IntegrationPlugin.java`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/flow/nodes/{nodeId}/execute-integration`
+
+---
+
+## Integration Library (Sprint 3)
+
+### F047 — 20 Pre-Built Integrations
+
+**User story:** As a flow designer, I can select from 20 popular integrations to add to my flow so that I can connect to SaaS tools without writing custom code.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key integrations:**
+- Slack, Gmail, HubSpot, Notion, Google Sheets, Airtable, Twilio, SendGrid, Mailchimp, Shopify, Discord, GitHub, Linear, Jira, Stripe, Mixpanel, Segment, Make.com, Microsoft Teams, Salesforce
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/integration/plugins/` (20 plugin classes)
+
+**API endpoints:**
+- `POST /v1/integrations/{id}/connect` (OAuth flow initiation)
+- `GET /v1/integrations/callback` (OAuth callback)
+
+---
+
+### F048 — Integration Connection Management
+
+**User story:** As a bot owner, I can manage OAuth connections for each integration so that I can securely authenticate with third-party APIs without storing credentials.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/integration/IntegrationConnectionController.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/IntegrationConnection.java`
+
+**API endpoints:**
+- `GET /v1/integrations`
+- `POST /v1/integrations/{id}/disconnect`
+- `POST /v1/integrations/{id}/refresh-token`
+
+---
+
+## CRM & Contacts (Sprint 3)
+
+### F049 — Lead Capture & CRM Module
+
+**User story:** As a sales team, I can automatically capture leads from conversations so that I can build a contact database and track sales pipeline.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/crm/LeadController.java`
+- `threadly-core/src/main/java/dev/threadly/core/crm/LeadCaptureController.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/Lead.java`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/leads`
+- `GET /v1/bots/{id}/leads`
+- `PUT /v1/leads/{id}`
+- `DELETE /v1/leads/{id}`
+
+---
+
+### F050 — Lead Tags & Custom Fields
+
+**User story:** As a CRM manager, I can tag leads and define custom fields so that I can segment and organize contacts for targeted outreach.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/entity/LeadTag.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/CustomFieldDefinition.java`
+- `threadly-core/src/main/java/dev/threadly/core/crm/LeadService.java`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/custom-fields`
+- `GET /v1/bots/{id}/custom-fields`
+
+---
+
+### F051 — Lead Timeline & Notes
+
+**User story:** As a support agent, I can view a lead's interaction history and add private notes so that I can maintain context across conversations.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/entity/LeadNote.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/LeadTimelineEvent.java`
+
+**API endpoints:**
+- `POST /v1/leads/{id}/notes`
+- `GET /v1/leads/{id}/timeline`
+
+---
+
+## Email Sequences (Sprint 3)
+
+### F052 — Email Sequence Engine
+
+**User story:** As a marketer, I can create automated email sequences triggered by lead actions so that I can nurture prospects without manual effort.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/sequences/EmailSequenceController.java`
+- `threadly-core/src/main/java/dev/threadly/core/sequences/EmailSequenceService.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/EmailSequence.java`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/sequences`
+- `GET /v1/bots/{id}/sequences`
+- `PUT /v1/sequences/{id}`
+- `DELETE /v1/sequences/{id}`
+- `POST /v1/leads/{id}/enroll-sequence`
+
+---
+
+### F053 — Email Sequence Steps & Scheduling
+
+**User story:** As a sequence builder, I can define step delays and email templates so that I can create sophisticated multi-email campaigns.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/entity/EmailSequenceStep.java`
+- `threadly-core/src/main/java/dev/threadly/core/sequences/SequenceStepScheduler.java`
+
+**API endpoints:**
+- `POST /v1/sequences/{id}/steps`
+- `PUT /v1/sequences/{id}/steps/{stepId}`
+- `DELETE /v1/sequences/{id}/steps/{stepId}`
+
+---
+
+## Billing & Subscriptions (Sprint 3)
+
+### F054 — Stripe Billing Module
+
+**User story:** As a SaaS operator, I can process payments and manage subscriptions via Stripe so that I can monetize Threadly.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/billing/BillingController.java`
+- `threadly-core/src/main/java/dev/threadly/core/billing/BillingService.java`
+- `threadly-core/src/main/java/dev/threadly/core/billing/StripeWebhookController.java`
+
+**API endpoints:**
+- `POST /v1/billing/checkout-session`
+- `POST /v1/billing/manage-subscription`
+- `POST /webhooks/stripe` (internal)
+
+---
+
+### F055 — Usage Metering & Plan Enforcement
+
+**User story:** As a service operator, I need to meter conversation and storage usage against billing plans so that I can enforce fair use and prevent overages.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/billing/PlanFeatureGate.java`
+- `threadly-core/src/main/java/dev/threadly/core/billing/BillingMeterJob.java`
+
+**API endpoints:** Usage enforced transparently in `/v1/conversations` and `/v1/bots/{id}/kb/upload`
+
+---
+
+## A/B Testing (Sprint 3)
+
+### F056 — A/B Test Creation & Variant Management
+
+**User story:** As a conversion optimizer, I can create A/B tests with multiple flow variants so that I can measure which version performs better.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/abtesting/AbTestController.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/AbTest.java`
+- `threadly-core/src/main/java/dev/threadly/core/entity/AbTestVariant.java`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/ab-tests`
+- `GET /v1/bots/{id}/ab-tests`
+- `PUT /v1/ab-tests/{id}`
+- `DELETE /v1/ab-tests/{id}`
+
+---
+
+### F057 — A/B Test Conversion Tracking
+
+**User story:** As a tester, I can view conversion metrics per variant so that I can declare a winner and deploy it.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/entity/AbTestConversion.java`
+- `threadly-core/src/main/java/dev/threadly/core/abtesting/AbTestService.java`
+
+**API endpoints:**
+- `GET /v1/ab-tests/{id}/results`
+
+---
+
+## Bot Management Enhancements (Sprint 3)
+
+### F058 — Bot Cloning
+
+**User story:** As a bot owner, I can duplicate a bot with all its flows, settings, and KB so that I can quickly spin up variations.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/workspace/BotController.java`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/clone`
+
+---
+
+### F059 — Flow Templates Library
+
+**User story:** As a new user, I can select from 20+ pre-built flow templates so that I can get started in minutes without building from scratch.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-ai/app/templates/` (20 JSON templates)
+- `threadly-core/src/main/java/dev/threadly/core/flow/TemplateController.java`
+
+**API endpoints:**
+- `GET /v1/templates`
+- `POST /v1/bots/{id}/from-template`
+
+---
+
+## Knowledge Base Enhancements (Sprint 3)
+
+### F060 — URL Scraping & Ingestion
+
+**User story:** As a knowledge manager, I can add URLs to my KB so that the bot can answer questions based on webpage content without uploading PDFs.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-ai/app/ingestion/url_scraper.py`
+- `threadly-ai/app/jobs/kb_ingest_job.py`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/kb/url`
+
+---
+
+### F061 — Sitemap Ingestion
+
+**User story:** As a knowledge manager, I can submit a sitemap URL so that all pages are automatically scraped and added to the KB.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-ai/app/ingestion/sitemap_parser.py`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/kb/sitemap`
+
+---
+
+### F062 — Cohere Reranking (Complete)
+
+**User story:** As an AI engineer, I can enable Cohere reranking for my bot to improve RAG relevance so that the AI answers are more accurate.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-ai/app/rag/reranker.py`
+
+**API endpoints:** Configuration available in bot settings
+
+---
+
+## Widget Enhancements (Sprint 3)
+
+### F063 — Lead Capture Form
+
+**User story:** As a bot designer, I can configure a pre-chat form to collect visitor info before the conversation starts so that I can segment leads effectively.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-widget/src/components/LeadCaptureForm.tsx`
+
+**API endpoints:**
+- `POST /v1/bots/{id}/leads/capture`
+
+---
+
+### F064 — CSAT Widget
+
+**User story:** As a support team, I can collect post-conversation satisfaction ratings so that I can measure customer happiness and identify issues.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-widget/src/components/CsatWidget.tsx`
+
+**API endpoints:**
+- `POST /v1/conversations/{id}/csat`
+
+---
+
+### F065 — Widget File Uploads
+
+**User story:** As a visitor, I can upload files to the widget so that I can share context (images, documents) with the bot or agent.
+
+**Status:** ✅ Complete (Sprint 2)
+
+**Key files:**
+- `threadly-widget/src/ui/ChatPanel.tsx`
+
+**API endpoints:**
+- `POST /v1/conversations/{id}/upload`
+
+---
+
+## Analytics Enhancements (Sprint 3)
+
+### F066 — CSV Export (Analytics)
+
+**User story:** As a business analyst, I can export conversation analytics to CSV so that I can analyze trends in external tools.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-core/src/main/java/dev/threadly/core/analytics/AnalyticsExportService.java`
+
+**API endpoints:**
+- `GET /v1/bots/{id}/analytics/export`
+
+---
+
+### F067 — Funnel Chart Visualization
+
+**User story:** As a product manager, I can see conversation completion funnels so that I can identify drop-off points in my flows.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-web/components/analytics/FunnelChart.tsx`
+
+**API endpoints:**
+- `GET /v1/bots/{id}/analytics/funnel`
+
+---
+
+### F068 — Cohort Retention Analysis
+
+**User story:** As a growth analyst, I can see returning visitor cohorts and retention curves so that I can measure long-term engagement.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-web/components/analytics/CohortAnalysis.tsx`
+
+**API endpoints:**
+- `GET /v1/bots/{id}/analytics/cohorts`
+
+---
+
+## Frontend UX (Sprint 3)
+
+### F069 — Integration Marketplace
+
+**User story:** As a flow designer, I can browse and connect to 20 integrations from a visual marketplace so that I can add third-party functionality to my flows.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-web/app/(app)/integrations/page.tsx`
+- `threadly-web/components/integrations/IntegrationCard.tsx`
+
+**API endpoints:**
+- `GET /v1/integrations`
+- `POST /v1/integrations/{id}/connect`
+
+---
+
+### F070 — CRM Pipeline View
+
+**User story:** As a sales manager, I can see all leads on a Kanban pipeline board so that I can manage the sales process visually.
+
+**Status:** ⏳ In Progress (Sprint 3)
+
+**Key files:**
+- `threadly-web/app/(app)/crm/pipeline/page.tsx`
+- `threadly-web/components/crm/PipelineKanban.tsx`
+
+**API endpoints:**
+- `GET /v1/bots/{id}/leads`
+- `PUT /v1/leads/{id}/status`

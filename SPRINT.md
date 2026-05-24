@@ -1,15 +1,143 @@
 # Threadly — Sprint Tracker
 
-> Phase 0 MVP + Sprint 2 Active. Updated: 2026-05-23
+> Sprint 3 Active. Updated: 2026-05-24
 > Run everything: `make up` · Docs: `docs/` · Plan: `.claude/plans/`
 
 ---
 
 ## Legend
-- `[x]` Done — code written, file exists
-- `[ ]` Pending — not yet built
+- ✅ Done — code written, file exists
+- ❌ Pending — not yet built
 - `[~]` Partial — scaffolded but needs work
 - `[!]` Blocked / needs decision
+
+---
+
+## Sprint 3 — n8n Parity + Growth Features
+
+> Started: 2026-05-24 · Target completion: 2026-06-14
+> 6 agents running in parallel. Goal: close all feature gaps vs n8n + chatbotbuilder.net.
+
+### Sprint 3 Agent Summary
+
+| Agent | Tasks | Done | Status |
+|-------|-------|------|--------|
+| Backend Agent | 13 | 0 | ❌ 0/13 |
+| Frontend Agent | 15 | 0 | ❌ 0/15 |
+| AI+Widget Agent | 12 | 0 | ❌ 0/12 |
+| Testing Agent | 10 | 0 | ❌ 0/10 |
+| Tech Lead Agent | 12 | 0 | ❌ 0/12 |
+| PM Agent | 5 | 5 | ✅ 5/5 |
+| **Total** | **67** | **5** | **7%** |
+
+---
+
+### Backend Agent — Sprint 3 Tasks ❌ 0/13
+
+| # | Task | Status |
+|---|------|--------|
+| B3-1 | Cron/scheduled flow triggers — Quartz Scheduler integration, `CronTriggerController`, `CronTriggerJob`, `CronTrigger` entity | ❌ |
+| B3-2 | Inbound webhook trigger node — `POST /webhooks/trigger/{token}`, `InboundWebhookController`, token generation + HMAC validation | ❌ |
+| B3-3 | Integration plugin framework — `IntegrationPlugin` interface, `IntegrationRegistry`, `IntegrationNodeExecutor` | ❌ |
+| B3-4 | 20 integration plugins — Slack, Gmail, HubSpot, Notion, Google Sheets, Airtable, Twilio, SendGrid, Mailchimp, Shopify, Discord, GitHub, Linear, Jira, Stripe, Mixpanel, Segment, Make.com, Teams, Salesforce | ❌ |
+| B3-5 | Flow subflows / reusable blocks — `SubflowNodeExecutor`, `SubflowController`, `SubflowDefinition` entity, Flyway V11 | ❌ |
+| B3-6 | Error handling branches — `onError` routing in `FlowRuntime`, `ErrorNodeExecutor`, `ErrorBranch` edge type | ❌ |
+| B3-7 | Loop node executor (ForEach) — `ForEachNodeExecutor`, iterate over array session variable | ❌ |
+| B3-8 | Per-node test mode endpoint — `POST /v1/bots/{id}/flow/nodes/{nodeId}/test` with mock input | ❌ |
+| B3-9 | CRM module — `Lead`, `LeadNote`, `LeadTimelineEvent`, `LeadTag`, `CustomFieldDefinition` entities; `LeadController`; `LeadCaptureController`; Flyway V10 | ❌ |
+| B3-10 | Email sequence engine — `EmailSequence`, `EmailSequenceStep`, `EmailSequenceEnrollment` entities; `EmailSequenceService`, `SequenceStepScheduler`; SendGrid/SMTP delivery; Flyway V13 | ❌ |
+| B3-11 | Stripe billing module — `BillingController`, `StripeWebhookController`, `BillingService`, `PlanFeatureGate`, `BillingMeterJob`; Flyway V8+V9 | ❌ |
+| B3-12 | Bot cloning endpoint — `POST /v1/bots/{id}/clone`; deep copy flow + settings, new bot ID | ❌ |
+| B3-13 | A/B testing — `AbTest`, `AbTestVariant`, `AbTestConversion` entities; `AbTestController`; traffic split logic in `FlowRuntime`; Flyway V14 | ❌ |
+
+---
+
+### AI+Widget Agent — Sprint 3 Tasks ❌ 0/12
+
+| # | Task | Status |
+|---|------|--------|
+| A3-1 | Per-node test mode UI bridge — `POST /ai/node-test` route, mock session context execution | ❌ |
+| A3-2 | 20 flow JSON templates — template library in `threadly-ai/templates/`, served via `GET /ai/templates` | ❌ |
+| A3-3 | Widget lead capture form — pre-chat form component in widget (`LeadCaptureForm.tsx`), configurable required fields | ❌ |
+| A3-4 | Widget CSAT rating — post-conversation 1–5 star satisfaction widget (`CsatWidget.tsx`), submits to `POST /v1/conversations/{id}/csat` | ❌ |
+| A3-5 | KB URL scraping — `url_scraper.py` (BeautifulSoup/playwright-python), HTML → text extraction, `robots.txt` respect | ❌ |
+| A3-6 | KB sitemap ingestion — `sitemap_parser.py`, parse XML sitemap, enqueue all URLs for scraping | ❌ |
+| A3-7 | Cohere reranker (complete) — previously partial; make fully opt-in per bot, enable in production | ❌ |
+| A3-8 | URL ingestion (complete) — previously partial (S3-19); full implementation with retry, depth limit | ❌ |
+| A3-9 | `mypy --strict` passing — fix all remaining type errors in threadly-ai | ❌ |
+| A3-10 | Widget A/B test variant rendering — show variant UI based on test cohort assignment | ❌ |
+| A3-11 | Widget analytics event tracking — track message events, CSAT ratings, lead captures | ❌ |
+| A3-12 | KB document metadata indexing — track source URL, upload date, language, document type | ❌ |
+
+---
+
+### Frontend Agent — Sprint 3 Tasks ❌ 0/15
+
+| # | Task | Status |
+|---|------|--------|
+| F3-1 | Full UI overhaul — n8n dark canvas (`bg-neutral-950`) + chatbotbuilder.net clean sidebar; update `globals.css` design tokens | ❌ |
+| F3-2 | 20+ node types in catalog (`NodePanel.tsx`) — add integration, cron, inbound-webhook, subflow, foreach, error-handler, ab-test, send-sms, send-slack, create-lead, update-lead, send-sequence nodes | ❌ |
+| F3-3 | Integration marketplace page — `/integrations` with category filter, search, connect OAuth flow, connection status | ❌ |
+| F3-4 | Template gallery — `/templates` with 20+ preview cards, one-click import to new bot | ❌ |
+| F3-5 | CRM contacts page — `/crm` list view with filter sidebar, search, bulk actions | ❌ |
+| F3-6 | CRM pipeline page — `/crm/pipeline` Kanban board with drag-and-drop | ❌ |
+| F3-7 | CRM contact profile page — `/crm/leads/[id]` with timeline, notes, custom fields | ❌ |
+| F3-8 | Billing/subscription page — `/billing` with plan cards, usage meters, invoice table, upgrade flow | ❌ |
+| F3-9 | Analytics overhaul — CSV export button, funnel chart (D3/Recharts), cohort retention table | ❌ |
+| F3-10 | Bot cloning UI — one-click "Duplicate" button on bot card, optimistic UI update | ❌ |
+| F3-11 | A/B test management UI — `/bots/[id]/ab-tests` create test, set traffic split %, view conversion metrics | ❌ |
+| F3-12 | Email sequence builder UI — `/sequences` list + `/sequences/[id]` step builder with scheduling config | ❌ |
+| F3-13 | Per-node test mode in builder — "Test Node" button in PropertiesPanel, opens test input modal, shows mock output | ❌ |
+| F3-14 | 20 flow templates library — pre-built starter flows (customer support, lead qualification, FAQ bot, survey bot, etc.) | ❌ |
+| F3-15 | Sprint 2 Frontend backlog — complete F2-1 through F2-8 (node catalog, PropertiesPanel 12 types, analytics page, inbox redesign, onboarding wizard, credentials UI, Cmd+K enhancements, theme preview) | ❌ |
+
+---
+
+### Testing Agent — Sprint 3 Tasks ❌ 0/10
+
+| # | Task | Status |
+|---|------|--------|
+| T3-1 | Unit tests — all Sprint 3 new node executors: `CronTriggerTest`, `InboundWebhookTest`, `ForEachNodeTest`, `ErrorHandlerTest`, `SubflowNodeTest` | ❌ |
+| T3-2 | Integration tests — `LeadIntegrationTest.java` (create, upsert, tag, assign, timeline) | ❌ |
+| T3-3 | Integration tests — `BillingIntegrationTest.java` (checkout session, webhook events, plan downgrade) | ❌ |
+| T3-4 | Integration tests — `AbTestIntegrationTest.java` (create test, traffic split, conversion tracking) | ❌ |
+| T3-5 | Integration tests — `IntegrationPluginTest.java` — mock external APIs, verify executor calls | ❌ |
+| T3-6 | Integration tests — `EmailSequenceIntegrationTest.java` (enroll, step scheduling, email delivery) | ❌ |
+| T3-7 | E2E Playwright — full happy path: `login → create bot → publish flow → embed → send message → see AI reply → lead captured` | ❌ |
+| T3-8 | Performance — 500 concurrent widget conversations (k6 load test script `scripts/load-test.js`) | ❌ |
+| T3-9 | Security — tenant isolation on all Sprint 3 new endpoints (CRM, billing, integrations, sequences, A/B tests) | ❌ |
+| T3-10 | Widget e2e tests — lead form capture, CSAT submission, file uploads | ❌ |
+
+---
+
+### Tech Lead Agent — Sprint 3 Tasks ❌ 0/12
+
+| # | Task | Status |
+|---|------|--------|
+| TL3-1 | DB migrations V7–V14 — integration_connections (V7), billing_subscriptions (V8), billing_usage (V9), leads+crm (V10), subflows (V11), email_sequences (V12), ab_tests (V13), csat_ratings (V14) | ❌ |
+| TL3-2 | Integration plugin framework architecture — `IntegrationPlugin` interface, `OAuthRefreshScheduler`, plugin registration, `IntegrationMeta` | ❌ |
+| TL3-3 | Full API docs update — update `openapi.yaml` with all Sprint 3 endpoints (CRM, billing, integrations, sequences, A/B tests, triggers) | ❌ |
+| TL3-4 | Docker Compose additions — MailHog (dev SMTP), Stripe CLI (webhook forwarding) | ❌ |
+| TL3-5 | `application-prod.yml` additions — Stripe env vars, integration OAuth secrets, Quartz scheduler config, email sequence SMTP | ❌ |
+| TL3-6 | Grafana dashboard updates — add panels for: active email sequences, CRM lead funnel, Stripe MRR meter, integration call rate/error | ❌ |
+| TL3-7 | Security review — OWASP check on new endpoints; verify Stripe webhook signature verification; verify all CRM endpoints have tenant isolation | ❌ |
+| TL3-8 | Integration OAuth flow — standardized flow for all 20 integrations (code exchange, token refresh, scope mapping) | ❌ |
+| TL3-9 | Rate limiting per integration — per-integration API call budgets via Bucket4j | ❌ |
+| TL3-10 | Webhook retry logic — exponential backoff for failed outbound webhooks (3 retries) | ❌ |
+| TL3-11 | Complete Sprint 2 Tech Lead backlog — TL2-1 through TL2-14 (FlowSchemaValidator, ConditionNodeExecutor, HMAC filter, AuditLog, Flyway V6, Railway, Cloudflare, Grafana, Metrics, prod yml, mvnw, OTel) | ❌ |
+| TL3-12 | Performance tuning — query optimization for CRM lead list (n+1 fixes), billing usage aggregation indexes | ❌ |
+
+---
+
+### PM Agent — Sprint 3 Tasks ✅ 5/5
+
+| # | Task | Status |
+|---|------|--------|
+| PM3-1 | `SPRINT.md` — prepend Sprint 3 section with 67 tasks organized by agent | ✅ |
+| PM3-2 | `FEATURES.md` — add F039–F070 entries for all Sprint 3 features | ✅ |
+| PM3-3 | `PRODUCT_STATUS.md` — update to Phase 0 ✅ + Sprint 3 IN PROGRESS | ✅ |
+| PM3-4 | `docs/15-integrations.md` — document all 20 integrations (Slack, Gmail, HubSpot, Notion, Google Sheets, SendGrid, Twilio, Stripe, Shopify, Discord, GitHub, Linear, Jira, Airtable, Mailchimp, Mixpanel, Segment, Make.com, Teams, Salesforce) | ✅ |
+| PM3-5 | `docs/16-billing.md`, `docs/17-crm.md` — billing plans + CRM model | ✅ |
 
 ---
 

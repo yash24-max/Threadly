@@ -1,19 +1,19 @@
 # Threadly — Product Status
 
-> Master tracker · Updated: 2026-05-23 · Phase 0 MVP + Sprint 2
+> Master tracker · Updated: 2026-05-24 · Phase 0 ✅ + Sprint 3 IN PROGRESS
 
 ---
 
-## Sprint 2 Progress
+## Sprint 3 Progress
 
 | Agent | Domain | Tasks | Status |
 |-------|--------|-------|--------|
-| Backend Agent | RBAC, API Keys, Webhooks, Analytics, Credentials, Rate Limiting | 13/13 | ✅ Complete |
-| AI+Widget Agent | Multi-provider LLM, Hybrid RAG, Cost Tracking, Widget Rich Messages | 15/15 | ✅ Complete |
-| Frontend Agent | Node catalog, PropertiesPanel, Analytics page, Inbox redesign, Onboarding | 0/8 | 🔄 In Progress |
-| Testing Agent | JUnit5, Testcontainers, Pytest, Playwright E2E, Vitest | 0/12 | 🔄 In Progress |
-| Tech Lead Agent | FlowSchemaValidator, Audit Log, Flyway V6, Railway, Cloudflare Worker | 0/14 | 🔄 In Progress |
-| PM Agent | PRODUCT_STATUS, AGENTS, CHANGELOG, SPRINT, FEATURES | 0/5 | 🔄 In Progress |
+| Backend Agent | Cron Triggers, Webhooks, 20 Integrations, Loops, Subflows, Errors, CRM, Sequences, Billing, A/B Tests | 0/13 | ❌ Not Started |
+| Frontend Agent | UI Overhaul, Integrations, Templates, CRM, Billing, Analytics, A/B Tests, Sequences | 0/15 | ❌ Not Started |
+| AI+Widget Agent | Node Test Mode, Templates, Lead Forms, CSAT, KB Scraping, Sitemap, Reranking, Widget Enhancements | 0/12 | ❌ Not Started |
+| Testing Agent | Unit/Integration/E2E, Sequences, CRM, Email, A/B Tests, Security, Performance | 0/10 | ❌ Not Started |
+| Tech Lead Agent | Migrations V7–V14, Integration OAuth, Rate Limiting, Webhooks, Grafana, Tuning, Sprint 2 Backlog | 0/12 | ❌ Not Started |
+| PM Agent | SPRINT.md, FEATURES.md, PRODUCT_STATUS.md, Integrations.md, Billing.md, CRM.md | 5/5 | ✅ Complete |
 
 ---
 
@@ -81,6 +81,83 @@
 - ✅ Widget: message timestamps (HH:mm on hover) + delivery status (✓/✓✓)
 - ✅ Widget: conversation persistence (sessionStorage, max 200 messages)
 - ✅ Widget: full theme system (12 CSS custom properties, dark mode auto/light/dark)
+
+### Sprint 3 — Backend Agent 🔄
+
+- 🔄 Cron trigger support (Quartz Scheduler)
+- 🔄 Inbound webhook trigger node
+- 🔄 20 integration plugins (Slack, Gmail, HubSpot, Notion, Google Sheets, Airtable, Twilio, SendGrid, Mailchimp, Shopify, Discord, GitHub, Linear, Jira, Stripe, Mixpanel, Segment, Make.com, Teams, Salesforce)
+- 🔄 Subflows / reusable blocks
+- 🔄 Error handling branches in FlowRuntime
+- 🔄 Loop/ForEach node executor
+- 🔄 Per-node test mode endpoint
+- 🔄 CRM module (Lead, LeadNote, LeadTag, CustomField entities)
+- 🔄 Email sequence engine (EmailSequence, Step, Enrollment entities)
+- 🔄 Stripe billing module (checkout session, webhook events, plan metering)
+- 🔄 Bot cloning endpoint
+- 🔄 A/B testing (AbTest, Variant, Conversion entities)
+- 🔄 Flyway V7–V14 (8 new migrations)
+
+### Sprint 3 — AI+Widget Agent 🔄
+
+- 🔄 Per-node test mode AI bridge
+- 🔄 20 flow JSON templates library
+- 🔄 Widget lead capture form component
+- 🔄 Widget CSAT rating widget
+- 🔄 KB URL scraping (BeautifulSoup/Playwright)
+- 🔄 KB sitemap ingestion parser
+- 🔄 Cohere reranker (complete, opt-in per bot)
+- 🔄 URL ingestion completion (full retry + depth limit)
+- 🔄 `mypy --strict` passing in threadly-ai
+- 🔄 Widget A/B test variant rendering
+- 🔄 Widget analytics event tracking
+- 🔄 KB document metadata indexing
+
+### Sprint 3 — Frontend Agent 🔄
+
+- 🔄 Full UI overhaul (n8n dark canvas + chatbotbuilder clean sidebar)
+- 🔄 20+ node types in catalog
+- 🔄 Integration marketplace page (`/integrations`)
+- 🔄 Template gallery (`/templates` with 20+ cards)
+- 🔄 CRM contacts page (`/crm` list + filter + bulk actions)
+- 🔄 CRM pipeline page (`/crm/pipeline` Kanban board)
+- 🔄 CRM contact profile page (`/crm/leads/[id]`)
+- 🔄 Billing/subscription page (`/billing` with plan cards)
+- 🔄 Analytics overhaul (CSV export, funnel chart, cohort retention)
+- 🔄 Bot cloning UI (Duplicate button)
+- 🔄 A/B test management UI (`/bots/[id]/ab-tests`)
+- 🔄 Email sequence builder UI (`/sequences` + step builder)
+- 🔄 Per-node test mode in builder
+- 🔄 20 flow templates library
+- 🔄 Sprint 2 Frontend backlog completion
+
+### Sprint 3 — Testing Agent 🔄
+
+- 🔄 Unit tests for new node executors (Cron, Webhook, ForEach, Error, Subflow)
+- 🔄 Integration tests: LeadIntegrationTest
+- 🔄 Integration tests: BillingIntegrationTest
+- 🔄 Integration tests: AbTestIntegrationTest
+- 🔄 Integration tests: IntegrationPluginTest
+- 🔄 Integration tests: EmailSequenceIntegrationTest
+- 🔄 E2E Playwright: full happy path (login → create → publish → embed → chat)
+- 🔄 Performance: 500 concurrent widget connections
+- 🔄 Security: tenant isolation on all new endpoints
+- 🔄 Widget e2e tests (lead form, CSAT, file uploads)
+
+### Sprint 3 — Tech Lead Agent 🔄
+
+- 🔄 Flyway V7–V14 migrations
+- 🔄 Integration OAuth flow standardization
+- 🔄 Rate limiting per integration
+- 🔄 Webhook retry logic (exponential backoff)
+- 🔄 Full API docs update (openapi.yaml)
+- 🔄 Docker Compose additions (MailHog, Stripe CLI)
+- 🔄 application-prod.yml enhancements
+- 🔄 Grafana dashboard updates
+- 🔄 Integration plugin framework architecture
+- 🔄 Performance tuning (CRM queries, billing aggregation)
+- 🔄 Sprint 2 Tech Lead backlog completion
+- 🔄 Security review (OWASP, Stripe webhook, CRM isolation)
 
 ### Sprint 2 — Frontend Agent 🔄
 
@@ -283,7 +360,23 @@
 | `credentials` | Encrypted credential store (AES-GCM) | V4 | ✅ |
 | `costs` | LLM cost tracking per call | V5 | ✅ |
 | `events` | Domain events for analytics rollups | V5 | ✅ |
-| `audit_log` | Who changed what, when (all mutations) | V6 | 🔄 Tech Lead |
+| `audit_log` | Who changed what, when (all mutations) | V6 | 🔄 Sprint 2 |
+| `integration_connections` | OAuth token store per integration | V7 | 🔄 Sprint 3 |
+| `billing_subscriptions` | Org subscription (plan, status, stripe_id) | V8 | 🔄 Sprint 3 |
+| `billing_usage` | Conversation + KB usage meters | V9 | 🔄 Sprint 3 |
+| `leads` | CRM leads (email, phone, status, tags) | V10 | 🔄 Sprint 3 |
+| `lead_notes` | Lead notes + timeline | V10 | 🔄 Sprint 3 |
+| `lead_timeline_events` | Lead interaction history | V10 | 🔄 Sprint 3 |
+| `lead_tags` | Lead tag definitions + mappings | V10 | 🔄 Sprint 3 |
+| `custom_field_definitions` | Custom field schema per bot | V10 | 🔄 Sprint 3 |
+| `subflow_definitions` | Reusable subflows | V11 | 🔄 Sprint 3 |
+| `email_sequences` | Email sequence definitions | V12 | 🔄 Sprint 3 |
+| `email_sequence_steps` | Sequence step (delay, template, action) | V12 | 🔄 Sprint 3 |
+| `email_sequence_enrollments` | Lead enrollment tracking | V12 | 🔄 Sprint 3 |
+| `ab_tests` | A/B test configurations | V13 | 🔄 Sprint 3 |
+| `ab_test_variants` | Flow variants within test | V13 | 🔄 Sprint 3 |
+| `ab_test_conversions` | Conversion tracking per variant | V13 | 🔄 Sprint 3 |
+| `csat_ratings` | Post-conversation satisfaction scores | V14 | 🔄 Sprint 3 |
 
 ---
 
@@ -303,7 +396,16 @@
 | 10 | `switch` | `SwitchNodeExecutor` | ✅ | Sprint 2 |
 | 11 | `send_email` | `SendEmailNodeExecutor` | ✅ | Sprint 2 |
 | 12 | `collect_input` | `CollectInputNodeExecutor` | ✅ | Sprint 2 |
-| 13 | `start` | (entry point, no executor) | ✅ | Phase 0 |
+| 13 | `foreach` | `ForEachNodeExecutor` | 🔄 | Sprint 3 |
+| 14 | `subflow` | `SubflowNodeExecutor` | 🔄 | Sprint 3 |
+| 15 | `error_handler` | `ErrorNodeExecutor` | 🔄 | Sprint 3 |
+| 16 | `integration` | `IntegrationNodeExecutor` | 🔄 | Sprint 3 |
+| 17 | `send_sms` | `SendSmsNodeExecutor` | 🔄 | Sprint 3 |
+| 18 | `send_slack` | `SendSlackNodeExecutor` | 🔄 | Sprint 3 |
+| 19 | `create_lead` | `CreateLeadNodeExecutor` | 🔄 | Sprint 3 |
+| 20 | `update_lead` | `UpdateLeadNodeExecutor` | 🔄 | Sprint 3 |
+| 21 | `send_email_sequence` | `SendEmailSequenceNodeExecutor` | 🔄 | Sprint 3 |
+| 22 | `start` | (entry point, no executor) | ✅ | Phase 0 |
 
 ---
 
