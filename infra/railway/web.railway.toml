@@ -1,9 +1,0 @@
-[build]
-builder = "NIXPACKS"
-buildCommand = "cd threadly-web && npm ci && npm run build"
-watchPatterns = ["threadly-web/**"]
-
-[deploy]
-startCommand = "cd threadly-web && npm run start"
-healthcheckPath = "/"
-healthcheckTimeout = 30
