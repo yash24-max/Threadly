@@ -1,9 +1,13 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, X, Copy, Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useTemplates } from "@/lib/api-hooks"
+import { ErrorBoundary } from "@/components/error-boundary"
+import { SkeletonGrid } from "@/components/skeleton-loader"
 import { TEMPLATES, TEMPLATE_CATEGORIES, type Template } from "@/lib/templates"
 
 interface TemplatePreviewProps {
@@ -85,13 +89,11 @@ function TemplatePreview({ template, onClose }: TemplatePreviewProps) {
                       {node.type === "question" && "Question"}
                       {node.type === "ai_reply" && "AI"}
                       {node.type === "api_call" && "API"}
+                      {node.type === "set_variable" && "Set Variable"}
                       {node.type === "condition" && "Branch"}
                       {node.type === "handoff" && "Handoff"}
                       {node.type === "end" && "End"}
-                      {node.type === "hubspot" && "HubSpot"}
-                      {node.type === "webhook_trigger" && "Webhook"}
-                      {node.type === "classify_intent" && "Classify"}
-                      {!["start", "message", "question", "ai_reply", "api_call", "condition", "handoff", "end", "hubspot", "webhook_trigger", "classify_intent"].includes(node.type) &&
+                      {!["start", "message", "question", "ai_reply", "api_call", "set_variable", "condition", "handoff", "end"].includes(node.type) &&
                         node.type.replace(/_/g, " ")}
                     </div>
                     {idx < template.definition.nodes.length - 1 && (

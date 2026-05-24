@@ -29,7 +29,7 @@ interface Integration {
   name: string
   category: "Messaging" | "CRM" | "Productivity" | "Analytics" | "E-commerce"
   description: string
-  logo: React.ComponentType<{ size?: number; className?: string }>
+  logo: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>
   color: string
   connected: boolean
   actions: string[]

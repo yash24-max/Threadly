@@ -39,7 +39,12 @@ export interface FlowNode {
     | "api_call"
     | "set_variable"
     | "handoff"
-    | "end";
+    | "end"
+    | "webhook_trigger"
+    | "classify_intent"
+    | "send_email"
+    | "http_request"
+    | "hubspot";
   position: { x: number; y: number };
   data: Record<string, unknown>;
 }

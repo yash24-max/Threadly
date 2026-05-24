@@ -1,0 +1,130 @@
+name: Bug Report
+description: Report a bug or issue with Threadly
+title: "[BUG] "
+labels: ["bug", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please provide clear and concise information to help us understand and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is
+      placeholder: "Example: When I click the 'Publish' button, the flow doesn't save..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: |
+        Clear steps to reproduce the behavior:
+      placeholder: |
+        1. Go to flow builder
+        2. Add an AI Reply node
+        3. Click publish
+        4. See the error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen?
+      placeholder: "The flow should be published successfully and live conversations should use the new version."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happens?
+      placeholder: "Error message appears: 'Network error. Please try again.'"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - "Critical (service down, data loss)"
+        - "High (major feature broken)"
+        - "Medium (feature partially broken)"
+        - "Low (minor issue, workaround exists)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Where does the bug occur?
+      options:
+        - "Flow Builder"
+        - "Conversation Inbox"
+        - "Knowledge Base"
+        - "Widget"
+        - "Integrations"
+        - "CRM"
+        - "Analytics"
+        - "Settings"
+        - "API"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Environment details:
+      value: |
+        - Browser: (e.g., Chrome 125.0)
+        - OS: (e.g., macOS 14.4)
+        - Threadly Version: (found in settings)
+        - Other: (relevant context)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs or Screenshots
+      description: |
+        Paste any error messages, logs, or screenshots that help explain the problem.
+        (Attach files below)
+      placeholder: "```\nERROR: Failed to publish flow: Network timeout\n```"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context about the problem?
+      placeholder: "This started after the recent update. It affects all my bots."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: "I have searched for existing issues"
+          required: true
+        - label: "This is not a duplicate of an existing issue"
+          required: true
+        - label: "I have provided clear steps to reproduce"
+          required: true

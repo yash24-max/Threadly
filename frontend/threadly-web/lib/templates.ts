@@ -1,3 +1,13 @@
+/**
+ * DEPRECATED: Do not use hardcoded TEMPLATES export
+ *
+ * Templates are now fetched dynamically from the backend API.
+ * Use the useTemplates() hook from hooks/useCatalog.ts instead.
+ *
+ * This file is kept for backward compatibility only during migration.
+ * All components should be updated to use the React Query hooks.
+ */
+
 import type { FlowDefinition } from "./types"
 
 export interface Template {
@@ -10,6 +20,10 @@ export interface Template {
   avatar?: string
 }
 
+/**
+ * @deprecated Use useTemplates() from hooks/useCatalog.ts instead
+ * This export is kept only for backward compatibility during migration.
+ */
 export const TEMPLATES: Template[] = [
   {
     id: "customer-support",

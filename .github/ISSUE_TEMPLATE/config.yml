@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Community Discussions
+    url: https://github.com/threadly/threadly/discussions
+    about: Ask questions, share ideas, and get help from the community
+  - name: Documentation
+    url: https://docs.threadly.io
+    about: Read guides, API reference, and troubleshooting help
+  - name: Status Page
+    url: https://status.threadly.io
+    about: Check service status and incident history
+  - name: Email Support
+    url: mailto:support@threadly.io
+    about: Contact our support team for urgent issues

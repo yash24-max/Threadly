@@ -34,6 +34,12 @@ spring:
       properties:
         spring.json.trusted.packages: "*"
 
+  # Cache configuration for catalogs (node types, templates, integrations)
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=5000,expireAfterWrite=24h
+
   cloud:
     consul:
       host: ${CONSUL_HOST:localhost}

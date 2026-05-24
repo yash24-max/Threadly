@@ -168,7 +168,6 @@ services:
       - billing-service
       - integration-service
       - threadly-ai
-      - threadly-web
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 5s

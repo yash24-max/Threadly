@@ -1,0 +1,120 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[FEATURE] "
+labels: ["enhancement", "feature-request"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature! Help us understand what you need and why.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: |
+        What problem does this feature solve? Who is affected?
+      placeholder: |
+        "As a support manager, I need to bulk-assign conversations to my team so that I can distribute work efficiently."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How should this feature work?
+      placeholder: |
+        "Add a checkbox to the conversation list. When multiple conversations are selected, show an 'Assign To' dropdown menu. Allow bulk assignment to a single agent or queue."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any other approaches you've considered?
+      placeholder: |
+        "1. Right-click context menu (but works poorly on mobile)
+        2. Drag-and-drop to agent sidebar (but unclear interaction)"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature?
+      options:
+        - "Critical (blocks a core workflow)"
+        - "High (improves core workflow significantly)"
+        - "Medium (nice-to-have enhancement)"
+        - "Low (polish / edge case)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: What area does this affect?
+      options:
+        - "Flow Builder"
+        - "Conversation Management"
+        - "Knowledge Base"
+        - "Widget"
+        - "Integrations"
+        - "CRM"
+        - "Analytics"
+        - "API"
+        - "Performance"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: user_stories
+    attributes:
+      label: User Stories
+      description: "Write 1–3 user stories in the format: As a [role], I want [action] so that [benefit]"
+      placeholder: |
+        As a support manager, I want to bulk-assign conversations to my team so that I can distribute work efficiently.
+        As a team lead, I want to see which agent has the most open conversations so that I can rebalance workload.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How will we know this feature is complete?
+      placeholder: |
+        - [ ] User can select multiple conversations
+        - [ ] User can click 'Assign To' and see a list of agents
+        - [ ] Selecting an agent assigns all selected conversations
+        - [ ] Assigned agent sees the conversations in their inbox
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups or Reference
+      description: Links to mockups, screenshots, or reference implementations
+      placeholder: "Slack has a similar pattern in their admin dashboard: [link]"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: "I have searched for existing feature requests"
+          required: true
+        - label: "This is not a duplicate of an existing request"
+          required: true
+        - label: "I have provided clear user stories"
+          required: true

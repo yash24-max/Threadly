@@ -412,7 +412,6 @@ function Canvas({ initialDefinition, onChange }: Props) {
       <PropertiesPanel
         selectedNode={selectedNode}
         onUpdateNode={handleNodeDataChange}
-        onTestNode={handleTestNode}
       />
     </div>
   )

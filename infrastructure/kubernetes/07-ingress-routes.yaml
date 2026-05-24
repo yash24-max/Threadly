@@ -1,0 +1,256 @@
+# Threadly application ingress routes
+# Configure API, Web, and services routing with TLS
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: threadly-tls
+  namespace: threadly
+type: kubernetes.io/tls
+stringData:
+  # Self-signed cert for development. Replace with real cert for production.
+  tls.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIDXTCCAkWgAwIBAgIJAJC1/iNAZwqDMA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNV
+    BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+    aWRnaXRzIFB0eSBMdGQwHhcNMjQwMTAxMDAwMDAwWhcNMjUwMTAxMDAwMDAwWjBF
+    MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+    ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+    CgKCAQEAu8V0/0PLACEHOLDER+CERTIFICATE+CONTENT
+    -----END CERTIFICATE-----
+  tls.key: |
+    -----BEGIN PRIVATE KEY-----
+    MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7xXT/QPLACEHOLDER
+    +KEY+CONTENT
+    -----END PRIVATE KEY-----
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: threadly-api
+  namespace: threadly
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type, Authorization, X-Requested-With"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.threadly.local
+        - threadly.local
+      secretName: threadly-tls
+  rules:
+    # Main API Gateway (routes to all services)
+    - host: api.threadly.local
+      http:
+        paths:
+          - path: /identity
+            pathType: Prefix
+            backend:
+              service:
+                name: identity-service
+                port:
+                  number: 80
+          - path: /workspace
+            pathType: Prefix
+            backend:
+              service:
+                name: workspace-service
+                port:
+                  number: 80
+          - path: /flow
+            pathType: Prefix
+            backend:
+              service:
+                name: flow-service
+                port:
+                  number: 80
+          - path: /runtime
+            pathType: Prefix
+            backend:
+              service:
+                name: runtime-service
+                port:
+                  number: 80
+          - path: /conversation
+            pathType: Prefix
+            backend:
+              service:
+                name: conversation-service
+                port:
+                  number: 80
+          - path: /knowledge
+            pathType: Prefix
+            backend:
+              service:
+                name: knowledge-service
+                port:
+                  number: 80
+          - path: /analytics
+            pathType: Prefix
+            backend:
+              service:
+                name: analytics-service
+                port:
+                  number: 80
+          - path: /billing
+            pathType: Prefix
+            backend:
+              service:
+                name: billing-service
+                port:
+                  number: 80
+          - path: /integration
+            pathType: Prefix
+            backend:
+              service:
+                name: integration-service
+                port:
+                  number: 80
+
+    # Web application
+    - host: threadly.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: threadly-web
+                port:
+                  number: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: threadly-realtime
+  namespace: threadly
+  annotations:
+    nginx.ingress.kubernetes.io/websocket-services: "centrifugo-service"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - realtime.threadly.local
+      secretName: threadly-tls
+  rules:
+    - host: realtime.threadly.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: centrifugo-service
+                port:
+                  number: 8000
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: threadly-observability
+  namespace: threadly
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: "basic"
+    nginx.ingress.kubernetes.io/auth-secret: "basic-auth"
+    nginx.ingress.kubernetes.io/auth-realm: "Threadly Observability"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - grafana.threadly.local
+        - prometheus.threadly.local
+      secretName: threadly-tls
+  rules:
+    - host: grafana.threadly.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana-service
+                port:
+                  number: 3000
+
+    - host: prometheus.threadly.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus-service
+                port:
+                  number: 9090
+
+---
+# Basic auth credentials (admin:admin)
+# To update: htpasswd -c auth admin
+apiVersion: v1
+kind: Secret
+metadata:
+  name: basic-auth
+  namespace: threadly
+type: Opaque
+data:
+  auth: YWRtaW46JGFwcjEkTnpGakNqRlokRkR4T2d5Ym01SUJUZ3lxMWd3ZTAO
+
+---
+# Network Policy to restrict ingress-nginx to threadly namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-threadly
+  namespace: threadly
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3001
+        - protocol: TCP
+          port: 3002
+        - protocol: TCP
+          port: 3003
+        - protocol: TCP
+          port: 3004
+        - protocol: TCP
+          port: 3005
+        - protocol: TCP
+          port: 3006
+        - protocol: TCP
+          port: 3007
+        - protocol: TCP
+          port: 3008
+        - protocol: TCP
+          port: 3009
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 8000
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 3000

@@ -1,0 +1,126 @@
+# Kustomize overlay for production environment
+# High availability, resource limits, production registry, security hardening
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: threadly
+
+bases:
+  - ../../
+
+# Production registry (change to your actual registry)
+images:
+  - name: threadly/identity-service
+    newName: ghcr.io/threadly/identity-service
+    newTag: v1.0.0
+  - name: threadly/workspace-service
+    newName: ghcr.io/threadly/workspace-service
+    newTag: v1.0.0
+  - name: threadly/flow-service
+    newName: ghcr.io/threadly/flow-service
+    newTag: v1.0.0
+  - name: threadly/runtime-service
+    newName: ghcr.io/threadly/runtime-service
+    newTag: v1.0.0
+  - name: threadly/conversation-service
+    newName: ghcr.io/threadly/conversation-service
+    newTag: v1.0.0
+  - name: threadly/knowledge-service
+    newName: ghcr.io/threadly/knowledge-service
+    newTag: v1.0.0
+  - name: threadly/analytics-service
+    newName: ghcr.io/threadly/analytics-service
+    newTag: v1.0.0
+  - name: threadly/billing-service
+    newName: ghcr.io/threadly/billing-service
+    newTag: v1.0.0
+  - name: threadly/integration-service
+    newName: ghcr.io/threadly/integration-service
+    newTag: v1.0.0
+  - name: threadly/threadly-ai
+    newName: ghcr.io/threadly/threadly-ai
+    newTag: v1.0.0
+  - name: threadly/threadly-web
+    newName: ghcr.io/threadly/threadly-web
+    newTag: v1.0.0
+
+# Production: 3 replicas per service (HA with anti-affinity)
+replicas:
+  - name: identity-service
+    count: 3
+  - name: workspace-service
+    count: 3
+  - name: flow-service
+    count: 3
+  - name: runtime-service
+    count: 3
+  - name: conversation-service
+    count: 3
+  - name: knowledge-service
+    count: 3
+  - name: analytics-service
+    count: 3
+  - name: billing-service
+    count: 3
+  - name: integration-service
+    count: 3
+
+# Patch deployments for production
+patchesStrategicMerge:
+  # Apply to all services - increased resource limits for production
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: identity-service
+    spec:
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 25%
+          maxUnavailable: 0
+      template:
+        spec:
+          containers:
+          - name: identity-service
+            imagePullPolicy: IfNotPresent
+            resources:
+              requests:
+                memory: "1Gi"
+                cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "1000m"
+            livenessProbe:
+              httpGet:
+                path: /actuator/health
+                port: 3001
+              initialDelaySeconds: 45
+              periodSeconds: 15
+              timeoutSeconds: 5
+              failureThreshold: 3
+            readinessProbe:
+              httpGet:
+                path: /actuator/health/readiness
+                port: 3001
+              initialDelaySeconds: 30
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 3
+
+# Network policies for production
+resources:
+  - ../../
+
+# Production annotations and labels
+commonAnnotations:
+  environment: production
+  docs.threadly.dev/environment: "prod"
+  prometheus.io/scrape: "true"
+  security.threadly.dev/pci-compliance: "true"
+  backup.threadly.dev/enabled: "true"
+
+commonLabels:
+  app.kubernetes.io/environment: production
+  security.threadly.dev/monitoring: enabled

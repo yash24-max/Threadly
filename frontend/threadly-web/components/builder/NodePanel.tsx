@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquare,
@@ -20,7 +20,11 @@ import {
   FormInput,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NODE_CATALOG, CATEGORY_ORDER, type NodeCatalogEntry } from "@/lib/node-catalog";
+import { useNodeCatalog } from "@/lib/api-hooks";
+import { ErrorBoundary } from "../error-boundary";
+import { NodePanelSkeleton } from "../skeleton-loader";
+import type { NodeCatalogEntry } from "@/lib/node-catalog";
+import { NODE_CATALOG as FALLBACK_CATALOG, CATEGORY_ORDER as FALLBACK_CATEGORIES } from "@/lib/node-catalog";
 
 const RECENT_KEY = "tly_recent_nodes";
 const MAX_RECENT = 5;
@@ -169,9 +173,21 @@ export function NodePanel({ onAddNode }: NodePanelProps) {
   const [search, setSearch] = useState("");
   const [recentTypes, setRecentTypes] = useState<string[]>([]);
 
+  // Fetch node catalog from backend with fallback
+  const { data: catalogResponse, isLoading, error, refetch } = useNodeCatalog();
+
   useEffect(() => {
     setRecentTypes(getRecentNodes());
   }, []);
+
+  // Use backend data if available, fall back to hardcoded catalog
+  const nodeCatalog = useMemo(() => {
+    return catalogResponse?.nodes || FALLBACK_CATALOG;
+  }, [catalogResponse?.nodes]);
+
+  const categoryOrder = useMemo(() => {
+    return (catalogResponse?.categories as unknown as typeof FALLBACK_CATEGORIES) || FALLBACK_CATEGORIES;
+  }, [catalogResponse?.categories]);
 
   const handleAdd = useCallback(
     (type: string, defaultData: Record<string, unknown>) => {
@@ -192,7 +208,7 @@ export function NodePanel({ onAddNode }: NodePanelProps) {
 
   const searchLower = search.toLowerCase().trim();
   const filtered = searchLower
-    ? NODE_CATALOG.filter(
+    ? nodeCatalog.filter(
         (e) =>
           e.label.toLowerCase().includes(searchLower) ||
           e.description.toLowerCase().includes(searchLower) ||
@@ -201,8 +217,30 @@ export function NodePanel({ onAddNode }: NodePanelProps) {
     : null;
 
   const recentEntries = recentTypes
-    .map((t) => NODE_CATALOG.find((e) => e.type === t))
+    .map((t) => nodeCatalog.find((e) => e.type === t))
     .filter((e): e is NodeCatalogEntry => Boolean(e));
+
+  if (isLoading) {
+    return (
+      <div
+        className={cn(
+          "flex flex-col overflow-hidden",
+          "w-[220px] flex-shrink-0",
+          "border-r border-[var(--border)] bg-[var(--bg-panel)]"
+        )}
+        aria-label="Node catalog"
+      >
+        <div className="px-3 pt-3 pb-2 border-b border-[var(--border)]">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-2">
+            Nodes
+          </p>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <NodePanelSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -240,6 +278,13 @@ export function NodePanel({ onAddNode }: NodePanelProps) {
         </div>
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="px-2 py-2">
+          <ErrorBoundary error={error as Error} compact onRetry={() => refetch()} />
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {filtered ? (
@@ -274,8 +319,8 @@ export function NodePanel({ onAddNode }: NodePanelProps) {
             )}
 
             {/* Categories */}
-            {CATEGORY_ORDER.map((cat) => {
-              const entries = NODE_CATALOG.filter((e) => e.category === cat);
+            {categoryOrder.map((cat) => {
+              const entries = nodeCatalog.filter((e) => e.category === cat);
               if (entries.length === 0) return null;
               return (
                 <CategorySection

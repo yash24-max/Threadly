@@ -1,0 +1,113 @@
+# Kustomize overlay for development environment
+# Minimal resource requirements, single replicas, local registry
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: threadly
+
+bases:
+  - ../../
+
+# Override image registry for local development
+images:
+  - name: threadly/identity-service
+    newName: localhost:5000/threadly/identity-service
+    newTag: dev
+  - name: threadly/workspace-service
+    newName: localhost:5000/threadly/workspace-service
+    newTag: dev
+  - name: threadly/flow-service
+    newName: localhost:5000/threadly/flow-service
+    newTag: dev
+  - name: threadly/runtime-service
+    newName: localhost:5000/threadly/runtime-service
+    newTag: dev
+  - name: threadly/conversation-service
+    newName: localhost:5000/threadly/conversation-service
+    newTag: dev
+  - name: threadly/knowledge-service
+    newName: localhost:5000/threadly/knowledge-service
+    newTag: dev
+  - name: threadly/analytics-service
+    newName: localhost:5000/threadly/analytics-service
+    newTag: dev
+  - name: threadly/billing-service
+    newName: localhost:5000/threadly/billing-service
+    newTag: dev
+  - name: threadly/integration-service
+    newName: localhost:5000/threadly/integration-service
+    newTag: dev
+  - name: threadly/threadly-ai
+    newName: localhost:5000/threadly/threadly-ai
+    newTag: dev
+  - name: threadly/threadly-web
+    newName: localhost:5000/threadly/threadly-web
+    newTag: dev
+
+# Development: 1 replica per service (no HA)
+replicas:
+  - name: identity-service
+    count: 1
+  - name: workspace-service
+    count: 1
+  - name: flow-service
+    count: 1
+  - name: runtime-service
+    count: 1
+  - name: conversation-service
+    count: 1
+  - name: knowledge-service
+    count: 1
+  - name: analytics-service
+    count: 1
+  - name: billing-service
+    count: 1
+  - name: integration-service
+    count: 1
+
+# Patch deployments for dev (reduced resources, no anti-affinity)
+patchesStrategicMerge:
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: identity-service
+    spec:
+      template:
+        spec:
+          affinity:
+            # Disable anti-affinity in dev for faster startup
+          containers:
+          - name: identity-service
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "250m"
+
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: workspace-service
+    spec:
+      template:
+        spec:
+          affinity:
+          containers:
+          - name: workspace-service
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "250m"
+
+commonAnnotations:
+  environment: development
+  docs.threadly.dev/environment: "dev"
+  prometheus.io/scrape: "false"

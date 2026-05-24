@@ -17,21 +17,33 @@ function generateTraceId(): string {
     .join("");
 }
 
-export const customInstance = async <T>(config: {
-  url: string;
-  method: string;
-  params?: Record<string, string>;
-  data?: unknown;
-  headers?: Record<string, string>;
-  signal?: AbortSignal;
-}): Promise<T> => {
+export const customInstance = async <T>(
+  urlOrConfig: string | { url: string; method: string; params?: Record<string, string>; data?: unknown; headers?: Record<string, string>; signal?: AbortSignal },
+  options?: any
+): Promise<T> => {
+  // Handle both signatures: customInstance(url, config) and customInstance(config)
+  let config: any;
+
+  if (typeof urlOrConfig === "string") {
+    // Called as customInstance(url, { method, ...rest })
+    // Check if options is an AbortSignal (React Query pattern)
+    if (options instanceof AbortSignal) {
+      config = { url: urlOrConfig, signal: options };
+    } else {
+      config = { url: urlOrConfig, ...options };
+    }
+  } else {
+    // Called as customInstance({ url, method, ...rest })
+    config = urlOrConfig;
+  }
+
   const session = await getSession();
   const token = (session as any)?.accessToken;
   const traceId = generateTraceId();
 
   const url = new URL(`${API_BASE}${config.url}`);
   if (config.params) {
-    Object.entries(config.params).forEach(([k, v]) => url.searchParams.set(k, v));
+    Object.entries(config.params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
   }
 
   const res = await fetch(url.toString(), {

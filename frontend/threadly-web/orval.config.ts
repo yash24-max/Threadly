@@ -20,8 +20,8 @@ export default defineConfig({
   threadly: {
     input: {
       target: process.env.NEXT_PUBLIC_API_URL
-        ? `${process.env.NEXT_PUBLIC_API_URL}/openapi.json`
-        : "http://localhost:8080/openapi.json",
+        ? `${process.env.NEXT_PUBLIC_API_URL}/v3/api-docs`
+        : "http://localhost:8082/v3/api-docs",
     },
     output: {
       mode: "tags-split",

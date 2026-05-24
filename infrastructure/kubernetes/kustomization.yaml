@@ -1,0 +1,94 @@
+# Kustomization base configuration for Threadly K8s manifests
+# Use overlays for environment-specific customization (dev, staging, prod)
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: threadly
+
+# Base resources (all environments)
+resources:
+  - 00-namespace.yaml
+  - 01-postgres-statefulset.yaml
+  - 02-redis-statefulset.yaml
+  - 03-kafka-statefulset.yaml
+  - 04-nginx-configmap.yaml
+  - 05-microservices-deployments-complete.yaml
+  - 06-ingress-controller.yaml
+  - 07-ingress-routes.yaml
+
+# Common labels across all resources
+commonLabels:
+  app.kubernetes.io/name: threadly
+  app.kubernetes.io/version: v1.0.0
+  app.kubernetes.io/component: platform
+  app.kubernetes.io/managed-by: kustomize
+
+# Common annotations
+commonAnnotations:
+  docs.threadly.dev/deployment-guide: "https://github.com/threadly/threadly/blob/main/DEPLOYMENT.md"
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+
+# Image replacement strategy
+images:
+  - name: threadly/identity-service
+    newTag: latest
+  - name: threadly/workspace-service
+    newTag: latest
+  - name: threadly/flow-service
+    newTag: latest
+  - name: threadly/runtime-service
+    newTag: latest
+  - name: threadly/conversation-service
+    newTag: latest
+  - name: threadly/knowledge-service
+    newTag: latest
+  - name: threadly/analytics-service
+    newTag: latest
+  - name: threadly/billing-service
+    newTag: latest
+  - name: threadly/integration-service
+    newTag: latest
+  - name: threadly/threadly-ai
+    newTag: latest
+  - name: threadly/threadly-web
+    newTag: latest
+  - name: postgres
+    newTag: 16-alpine
+  - name: redis
+    newTag: 7-alpine
+  - name: confluentinc/cp-kafka
+    newTag: 7.5.0
+  - name: registry.k8s.io/ingress-nginx/controller
+    newTag: v1.9.4
+
+# Replica scaling (can be overridden in overlays)
+replicas:
+  - name: identity-service
+    count: 3
+  - name: workspace-service
+    count: 3
+  - name: flow-service
+    count: 3
+  - name: runtime-service
+    count: 3
+  - name: conversation-service
+    count: 3
+  - name: knowledge-service
+    count: 3
+  - name: analytics-service
+    count: 3
+  - name: billing-service
+    count: 3
+  - name: integration-service
+    count: 3
+
+# Namespace policy
+vars:
+  - name: NAMESPACE
+    objref:
+      kind: Namespace
+      name: threadly
+    fieldref:
+      fieldpath: metadata.name

@@ -1,3 +1,13 @@
+/**
+ * DEPRECATED: Do not use hardcoded NODE_CATALOG export
+ *
+ * Node types are now fetched dynamically from the backend API.
+ * Use the useNodeCatalog() hook from hooks/useCatalog.ts instead.
+ *
+ * This file is kept for backward compatibility only during migration.
+ * All components should be updated to use the React Query hooks.
+ */
+
 export interface NodeCatalogEntry {
   type: string;
   label: string;
@@ -10,6 +20,10 @@ export interface NodeCatalogEntry {
   outputs?: number;
 }
 
+/**
+ * @deprecated Use useNodeCatalog() from hooks/useCatalog.ts instead
+ * This export is kept only for backward compatibility during migration.
+ */
 export const NODE_CATALOG: NodeCatalogEntry[] = [
   // Messaging (Blue)
   {
