@@ -260,9 +260,9 @@ function FeaturesSection() {
 
 /* ── How It Works ─────────────────────────────────────────────────────────── */
 const steps = [
-  { step:"01", title:"Build your flow",       desc:"Open the visual canvas and drag nodes to create conversation paths. Add AI nodes backed by your knowledge base, conditions, and API calls.", cta:"Open builder →", href:"/signup"   },
-  { step:"02", title:"Train on your content", desc:"Upload PDFs, URLs, or paste text. Threadly chunks, embeds, and indexes everything so your bot can answer accurately from your docs.",       cta:"See KB demo →",  href:"/product"  },
-  { step:"03", title:"Deploy everywhere",     desc:"Grab the embed snippet for your site, or connect to WhatsApp, Instagram, or Telegram. Go live in under 5 minutes.",                          cta:"View channels →",href:"/product"  },
+  { step:"01", title:"Build your flow",       desc:"Open the visual canvas and drag nodes to create conversation paths. Add AI nodes backed by your knowledge base, conditions, and API calls.", cta:"Open builder →",  href:"/signup"                    },
+  { step:"02", title:"Train on your content", desc:"Upload PDFs, URLs, or paste text. Threadly chunks, embeds, and indexes everything so your bot can answer accurately from your docs.",       cta:"See KB features →", href:"/use-cases/knowledge"       },
+  { step:"03", title:"Deploy everywhere",     desc:"Grab the embed snippet for your site, or connect to WhatsApp, Instagram, or Telegram. Go live in under 5 minutes.",                          cta:"View channels →",   href:"/channels/web-widget"       },
 ];
 
 function HowItWorksSection() {
@@ -598,14 +598,14 @@ function CtaSection() {
             }}>
               Start free trial <ArrowRight size={14} />
             </Link>
-            <Link href="/product" style={{
+            <Link href="/use-cases/customer-support" style={{
               display: "flex", alignItems: "center", gap: 8,
               borderRadius: 14, border: "2px solid rgba(255,255,255,0.3)",
               background: "rgba(255,255,255,0.1)", padding: "12px 28px",
               fontSize: 14, fontWeight: 600, color: "#fff",
               textDecoration: "none", backdropFilter: "blur(8px)",
             }}>
-              <Play size={14} /> Watch demo
+              <Play size={14} /> See use cases
             </Link>
           </div>
           <p style={{ marginTop: 16, fontSize: 13, color: "rgba(255,255,255,0.55)" }}>

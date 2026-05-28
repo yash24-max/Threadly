@@ -586,7 +586,7 @@ services:
 
   threadly-web:
     build:
-      context: ../threadly-web
+      context: ../../frontend/threadly-web
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
