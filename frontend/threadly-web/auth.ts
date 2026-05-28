@@ -44,8 +44,8 @@ async function refreshAccessToken(token: any) {
     };
   } catch (error) {
     console.error("Token refresh failed:", error);
-    // Return token as-is on network error; user will be re-logged on next request failure
-    return token;
+    // Clear accessToken so middleware treats this as unauthenticated
+    return { ...token, accessToken: null };
   }
 }
 

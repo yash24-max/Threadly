@@ -32,13 +32,18 @@ export default auth((req) => {
       (p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith("/api/auth")
     );
 
-  if (!req.auth && !isPublic) {
+  // A session is only "valid" if it has a real accessToken.
+  // req.auth can be truthy with accessToken=null when the refresh token has expired —
+  // in that case we must NOT treat the user as logged in.
+  const hasValidSession = !!(req.auth as any)?.accessToken;
+
+  if (!hasValidSession && !isPublic) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", req.url);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (req.auth && (pathname === "/login" || pathname === "/signup")) {
+  if (hasValidSession && (pathname === "/login" || pathname === "/signup")) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
