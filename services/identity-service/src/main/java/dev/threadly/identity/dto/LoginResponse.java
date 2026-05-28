@@ -36,6 +36,11 @@ public class LoginResponse {
   private String organizationId;
 
   /**
+   * Organization name — avoids extra API call on the frontend after login.
+   */
+  private String organizationName;
+
+  /**
    * JWT access token for authenticated requests.
    */
   private String accessToken;

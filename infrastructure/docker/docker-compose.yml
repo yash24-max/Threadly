@@ -3,7 +3,7 @@ version: "3.9"
 services:
   # ── Service Discovery ──────────────────────────────────────────────────
   consul:
-    image: consul:latest
+    image: hashicorp/consul:latest
     restart: unless-stopped
     command: agent -server -ui -bootstrap-expect=1 -client=0.0.0.0
     ports:

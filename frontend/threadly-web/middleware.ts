@@ -1,13 +1,39 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
-const publicPaths = ["/", "/login", "/signup", "/api/auth"];
+// All public marketing + auth paths — no login required
+const PUBLIC_PREFIXES = [
+  "/",
+  "/login",
+  "/signup",
+  "/product",
+  "/use-cases",
+  "/pricing",
+  "/blog",
+  "/docs",
+  "/help",
+  "/case-studies",
+  "/comparison",
+  "/channels",
+  "/docs",
+  "/help",
+  "/about",
+  "/contact",
+  "/privacy",
+  "/terms",
+  "/cookies",
+  "/changelog",
+  "/api/auth",
+];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const isPublic = publicPaths.some(
-    (p) => pathname === p || pathname.startsWith("/api/auth")
-  );
+
+  const isPublic =
+    pathname === "/" ||
+    PUBLIC_PREFIXES.some(
+      (p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith("/api/auth")
+    );
 
   if (!req.auth && !isPublic) {
     const loginUrl = new URL("/login", req.url);

@@ -63,10 +63,7 @@ export interface Integration {
 export const useNodeCatalog = (): UseQueryResult<NodeCatalogEntry[], Error> => {
   return useQuery({
     queryKey: ["catalog", "node-types"],
-    queryFn: async () => {
-      const response = await api.get("/v1/catalogs/node-types");
-      return response.data;
-    },
+    queryFn: async () => api.get<NodeCatalogEntry[]>("/v1/catalogs/node-types"),
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 60, // 1 hour (formerly cacheTime)
     retry: 3,
@@ -82,10 +79,7 @@ export const useNodeCatalog = (): UseQueryResult<NodeCatalogEntry[], Error> => {
 export const useTemplates = (): UseQueryResult<Template[], Error> => {
   return useQuery({
     queryKey: ["catalog", "templates"],
-    queryFn: async () => {
-      const response = await api.get("/v1/catalogs/templates");
-      return response.data;
-    },
+    queryFn: async () => api.get<Template[]>("/v1/catalogs/templates"),
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 60, // 1 hour
     retry: 3,
@@ -98,12 +92,12 @@ export const useTemplates = (): UseQueryResult<Template[], Error> => {
  */
 export const useTemplatesByCategory = (
   category: string
-): UseQueryResult<Template[], Error> => {
+ ) => {
   const { data: templates, ...rest } = useTemplates();
 
   return {
     ...rest,
-    data: templates?.filter((t) => t.category === category),
+    data: templates?.filter((t) => t.category === category) ?? [],
   };
 };
 
@@ -115,10 +109,7 @@ export const useTemplatesByCategory = (
 export const useIntegrations = (): UseQueryResult<Integration[], Error> => {
   return useQuery({
     queryKey: ["catalog", "integrations"],
-    queryFn: async () => {
-      const response = await api.get("/v1/catalogs/integrations");
-      return response.data;
-    },
+    queryFn: async () => api.get<Integration[]>("/v1/catalogs/integrations"),
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 60, // 1 hour
     retry: 3,
@@ -134,12 +125,10 @@ export const useSearchIntegrations = (
 ): UseQueryResult<Integration[], Error> => {
   return useQuery({
     queryKey: ["catalog", "integrations", "search", query],
-    queryFn: async () => {
-      const response = await api.post("/v1/catalogs/integrations/search", {
+    queryFn: async () =>
+      api.post<Integration[]>("/v1/catalogs/integrations/search", {
         query,
-      });
-      return response.data;
-    },
+      }),
     enabled: query.length > 0,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 60,
@@ -151,10 +140,7 @@ export const useSearchIntegrations = (
 /**
  * Get node catalog organized by category
  */
-export const useNodesByCategory = (): UseQueryResult<
-  Record<string, NodeCatalogEntry[]>,
-  Error
-> => {
+export const useNodesByCategory = () => {
   const { data: nodes, ...rest } = useNodeCatalog();
 
   const organized = nodes?.reduce(
@@ -170,6 +156,6 @@ export const useNodesByCategory = (): UseQueryResult<
 
   return {
     ...rest,
-    data: organized,
+    data: organized ?? {},
   };
 };

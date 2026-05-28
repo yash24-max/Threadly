@@ -10,6 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -48,19 +51,37 @@ public class SecurityConfig {
   }
 
   /**
+   * CORS configuration — allows requests from the Next.js frontend and production domain.
+   * Nginx gateway also adds CORS headers, but this bean covers direct service calls.
+   */
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
+    config.setAllowCredentials(true);
+    config.addAllowedOriginPattern("http://localhost:*");
+    config.addAllowedOriginPattern("https://*.threadly.dev");
+    config.addAllowedOriginPattern("https://*.threadly.ai");
+    config.addAllowedHeader("*");
+    config.addAllowedMethod("*");
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+    return source;
+  }
+
+  /**
    * Filter to extract tenant context from JWT claims.
    */
   @Bean
   public SecurityFilterChain filterChain(org.springframework.security.config.annotation.web.builders.HttpSecurity http)
       throws Exception {
     http
-        .csrf().disable()
+        .csrf(csrf -> csrf.disable())
         .authorizeHttpRequests(authz -> authz
-            .requestMatchers("/auth/**", "/health", "/actuator/**").permitAll()
+            .requestMatchers("/auth/**", "/health", "/actuator/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
             .anyRequest().authenticated()
         )
         .addFilterBefore(new TenantContextFilter(jwtDecoder()), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
-        .cors();
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
     return http.build();
   }

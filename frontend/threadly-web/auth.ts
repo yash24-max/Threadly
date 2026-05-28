@@ -20,13 +20,14 @@ function generateTraceId(): string {
 async function refreshAccessToken(token: any) {
   try {
     const traceId = generateTraceId();
+    // Backend RefreshTokenRequest expects { refreshToken } in request body (not Authorization header)
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Trace-ID": traceId,
-        Authorization: `Bearer ${token.refreshToken}`,
       },
+      body: JSON.stringify({ refreshToken: token.refreshToken }),
     });
 
     if (!res.ok) {
@@ -72,17 +73,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }),
           });
           if (!res.ok) return null;
-          const data: AuthResponse = await res.json();
+          // LoginResponse (Spring Boot flat shape):
+          // { userId, email, fullName, organizationId, accessToken, refreshToken, expiresIn, tokenType }
+          const data = await res.json();
           return {
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.name,
+            id: data.userId ?? data.user?.id,
+            email: data.email ?? data.user?.email,
+            name: data.fullName ?? data.user?.name,
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
-            orgId: data.user.org.id,
-            orgName: data.user.org.name,
-            orgSlug: data.user.org.slug,
-            role: data.user.role,
+            orgId: data.organizationId ?? data.user?.org?.id,
+            orgName: data.organizationName ?? data.user?.org?.name ?? "",
+            orgSlug: data.organizationSlug ?? data.user?.org?.slug ?? "",
+            role: data.role ?? data.user?.role ?? "OWNER",
           };
         } catch {
           return null;

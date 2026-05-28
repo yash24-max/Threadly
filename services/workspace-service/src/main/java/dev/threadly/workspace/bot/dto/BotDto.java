@@ -70,4 +70,11 @@ public class BotDto {
    */
   @JsonProperty("user_role")
   private String userRole;
+
+  /**
+   * Brand accent color for the bot widget (hex, e.g. "#6366F1").
+   * Used by the frontend to colorize bot avatars and the chat widget.
+   */
+  @JsonProperty("accent_color")
+  private String accentColor;
 }

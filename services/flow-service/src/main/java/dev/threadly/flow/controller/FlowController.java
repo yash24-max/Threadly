@@ -85,10 +85,23 @@ public class FlowController {
     log.debug("Listing flows for bot: {}, page: {}", botId, pageable.getPageNumber());
 
     String orgId = auth.getName();
+    String userId = (String) auth.getCredentials();
     Page<FlowDto> flows;
 
     if (botId != null && !botId.isEmpty()) {
       flows = flowService.listFlowsByBot(botId, orgId, pageable);
+      // BE-007: Auto-create an empty default flow for new bots that have no flows yet.
+      // This prevents the builder from spinning forever on first open.
+      if (flows.isEmpty()) {
+        log.info("No flows found for bot: {}. Auto-creating default empty flow.", botId);
+        CreateFlowRequest defaultFlow = CreateFlowRequest.builder()
+            .botId(botId)
+            .name("Main Flow")
+            .description("Default flow created automatically")
+            .build();
+        flowService.createFlow(defaultFlow, orgId, userId);
+        flows = flowService.listFlowsByBot(botId, orgId, pageable);
+      }
     } else {
       flows = flowService.listFlows(orgId, pageable);
     }

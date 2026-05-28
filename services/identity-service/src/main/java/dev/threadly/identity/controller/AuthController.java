@@ -100,11 +100,21 @@ public class AuthController {
         httpRequest.getHeader("User-Agent")
     );
 
+    // Fetch org name so frontend can populate the session without an extra API call
+    String orgName = "";
+    try {
+      var org = organizationService.getOrganizationById(user.getOrgId());
+      if (org != null) orgName = org.getName();
+    } catch (Exception e) {
+      log.warn("Could not fetch org name for login response: {}", e.getMessage());
+    }
+
     LoginResponse response = LoginResponse.builder()
         .userId(user.getId())
         .email(user.getEmail())
         .fullName(user.getFullName())
         .organizationId(user.getOrgId())
+        .organizationName(orgName)
         .accessToken(accessToken)
         .refreshToken(refreshToken)
         .expiresIn(900)
