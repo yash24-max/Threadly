@@ -25,8 +25,8 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
   private final UserService userService;
-  private final OrganizationService organizationService;
   private final AuthTokenService authTokenService;
+  private final OrganizationService organizationService;
 
   /**
    * Signup endpoint - creates a new user and organization.
@@ -36,14 +36,9 @@ public class AuthController {
    * @return SignupResponse with user, org details and tokens
    */
   @PostMapping("/signup")
-  public ResponseEntity<SignupResponse> signup(
-      @Valid @RequestBody SignupRequest request,
-      HttpServletRequest httpRequest) {
-
+  public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest request, HttpServletRequest httpRequest) {
     log.info("Processing signup for email: {}", request.getEmail());
-
     Organization org = organizationService.createOrganization(request.getOrganizationName(), null);
-
     User user = userService.registerUser(
         request.getEmail(),
         request.getPassword(),
@@ -55,11 +50,7 @@ public class AuthController {
     organizationService.updateOrganization(org.getId(), org.getName(), null, null, null);
 
     String accessToken = authTokenService.issueAccessToken(user);
-    String refreshToken = authTokenService.issueRefreshToken(
-        user,
-        httpRequest.getRemoteAddr(),
-        httpRequest.getHeader("User-Agent")
-    );
+    String refreshToken = authTokenService.issueRefreshToken(user, httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
 
     SignupResponse response = SignupResponse.builder()
         .userId(user.getId())

@@ -42,29 +42,27 @@ public class OrganizationService {
   @CacheEvict(value = "organizations", allEntries = true)
   public Organization createOrganization(String name, String ownerId) {
     Organization organization = Organization.builder()
-        .id(UUID.randomUUID().toString())
-        .name(name)
-        .ownerId(ownerId)
-        .plan("FREE")
-        .active(true)
-        .build();
+            .id(UUID.randomUUID().toString())
+            .name(name)
+            .plan("FREE")
+            .active(true)
+            .ownerId(ownerId)
+            .build();
 
     Organization saved = organizationRepository.save(organization);
 
     Membership ownerMembership = Membership.builder()
-        .id(UUID.randomUUID().toString())
-        .userId(ownerId)
-        .orgId(saved.getId())
-        .role("OWNER")
-        .teamIds("")
-        .active(true)
-        .build();
+            .id(UUID.randomUUID().toString())
+            .teamIds("")
+            .active(true)
+            .role("OWNER")
+            .userId(ownerId)
+            .orgId(saved.getId())
+            .build();
 
     membershipRepository.save(ownerMembership);
     log.info("Created organization: {} with owner: {}", saved.getId(), ownerId);
-
     eventPublisher.publishOrganizationCreated(saved.getId(), saved.getName(), ownerId, saved.getPlan());
-
     return saved;
   }
 
