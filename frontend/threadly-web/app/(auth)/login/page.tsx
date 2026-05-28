@@ -126,7 +126,7 @@ function LoginForm() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", letterSpacing: "0.02em", textTransform: "uppercase" }}>Password</label>
-              <Link href="/forgot-password" style={{ fontSize: 12, color: "#6366F1", textDecoration: "none", fontWeight: 500 }}>Forgot?</Link>
+              <span style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 500 }}>Forgot?</span>
             </div>
             <div style={{ position: "relative" }}>
               <input

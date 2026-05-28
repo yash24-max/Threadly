@@ -146,7 +146,6 @@ export default function DashboardPage() {
       value: stats?.totalConversations ?? "—",
       icon: MessageSquare,
       color: "#6366F1",
-      delta: stats ? "+12% this week" : undefined,
     },
     {
       label: "Active Now",
@@ -168,7 +167,7 @@ export default function DashboardPage() {
         : "—",
       icon: Clock,
       color: "#3B82F6",
-      delta: stats ? "p50 latency" : undefined,
+      delta: undefined,
     },
   ];
 

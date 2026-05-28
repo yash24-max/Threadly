@@ -1,349 +1,272 @@
-"use client"
+"use client";
 
-import { useState, useCallback, useMemo } from "react"
-import { useSearchParams } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
-import { Search, X, Copy, Eye } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useTemplates } from "@/lib/api-hooks"
-import { ErrorBoundary } from "@/components/error-boundary"
-import { SkeletonGrid } from "@/components/skeleton-loader"
-import { TEMPLATES, TEMPLATE_CATEGORIES, type Template } from "@/lib/templates"
+import { useState } from "react";
+import { Search, X, Eye, Copy } from "lucide-react";
+import { TEMPLATES, type Template } from "@/lib/templates";
 
-interface TemplatePreviewProps {
-  template: Template | null
-  onClose: () => void
-}
+const CATEGORY_LABELS: Record<string, string> = {
+  Support: "Support",
+  LeadGen: "Lead Gen",
+  Ecommerce: "E-commerce",
+  Healthcare: "Healthcare",
+  RealEstate: "Real Estate",
+  Education: "Education",
+  HR: "HR",
+};
 
-function TemplatePreview({ template, onClose }: TemplatePreviewProps) {
-  if (!template) return null
+const ALL_CATEGORIES = ["All", ...Object.keys(CATEGORY_LABELS)] as const;
 
-  const nodeCount = template.definition.nodes.length
-  const edgeCount = template.definition.edges.length
+const COLOR_MAP: Record<string, string> = {
+  Support:     "#6366F1",
+  LeadGen:     "#10B981",
+  Ecommerce:   "#F59E0B",
+  Healthcare:  "#EF4444",
+  RealEstate:  "#06B6D4",
+  Education:   "#8B5CF6",
+  HR:          "#EC4899",
+};
 
+// ─── Preview modal ─────────────────────────────────────────────────────────────
+
+function PreviewModal({ template, onClose }: { template: Template; onClose: () => void }) {
+  const color = COLOR_MAP[template.category] ?? "#6366F1";
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-      >
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-lg shadow-2xl overflow-hidden"
-        >
-          {/* Header */}
-          <div className="flex items-start justify-between p-6 border-b dark:border-slate-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-900">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-4xl">{template.avatar}</span>
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {template.name}
-                  </h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {template.description}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-3">
-                <span className="px-2 py-1 text-xs rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                  {template.category}
-                </span>
-                <span className="px-2 py-1 text-xs rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                  {nodeCount} nodes
-                </span>
-                <span className="px-2 py-1 text-xs rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                  {edgeCount} connections
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
-            >
-              <X size={24} className="text-slate-500" />
-            </button>
-          </div>
-
-          {/* Preview visualization */}
-          <div className="p-6">
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 mb-6 overflow-x-auto">
-              <div className="flex flex-wrap gap-4 justify-center items-center">
-                {template.definition.nodes.map((node, idx) => (
-                  <motion.div
-                    key={node.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="flex items-center gap-2"
-                  >
-                    <div className="px-3 py-2 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                      {node.type === "start" && "Start"}
-                      {node.type === "message" && "Message"}
-                      {node.type === "question" && "Question"}
-                      {node.type === "ai_reply" && "AI"}
-                      {node.type === "api_call" && "API"}
-                      {node.type === "set_variable" && "Set Variable"}
-                      {node.type === "condition" && "Branch"}
-                      {node.type === "handoff" && "Handoff"}
-                      {node.type === "end" && "End"}
-                      {!["start", "message", "question", "ai_reply", "api_call", "set_variable", "condition", "handoff", "end"].includes(node.type) &&
-                        node.type.replace(/_/g, " ")}
-                    </div>
-                    {idx < template.definition.nodes.length - 1 && (
-                      <div className="text-slate-400">→</div>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Flow summary */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Nodes</p>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {nodeCount}
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Connections</p>
-                <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                  {edgeCount}
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20">
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Complexity</p>
-                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                  {nodeCount < 5 ? "Low" : nodeCount < 10 ? "Medium" : "High"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="flex gap-3 p-6 border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors font-medium"
-            >
-              Close
-            </button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors flex items-center justify-center gap-2"
-            >
-              <Copy size={16} />
-              Use Template
-            </motion.button>
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  )
-}
-
-interface TemplateCardProps {
-  template: Template
-  onUse: (template: Template) => void
-  onPreview: (template: Template) => void
-}
-
-function TemplateCard({ template, onUse, onPreview }: TemplateCardProps) {
-  return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      className="group flex flex-col bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm hover:shadow-md transition-all"
+    <div
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(4px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      {/* Preview area */}
-      <div className="relative h-40 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center overflow-hidden">
-        <div className="text-5xl filter drop-shadow-sm">{template.avatar}</div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div style={{
+        background: "var(--bg-panel)", border: "1px solid var(--border)",
+        borderRadius: 18, width: "100%", maxWidth: 520,
+        boxShadow: "0 20px 60px rgba(0,0,0,0.5)", overflow: "hidden",
+      }}>
+        {/* Header */}
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ fontSize: 36 }}>{template.avatar}</div>
+            <div>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)" }}>{template.name}</h2>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{template.description}</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "5px 7px", cursor: "pointer", color: "var(--text-muted)", flexShrink: 0 }}>
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Node flow preview */}
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)" }}>
+          <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: 12 }}>Flow structure</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+            {template.definition.nodes.map((node, i) => (
+              <span key={node.id} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <span style={{
+                  padding: "4px 10px", borderRadius: 8,
+                  background: "var(--bg-surface)", border: "1px solid var(--border)",
+                  fontSize: 12, color: "var(--text-secondary)", fontWeight: 500,
+                }}>
+                  {node.type.replace(/_/g, " ")}
+                </span>
+                {i < template.definition.nodes.length - 1 && (
+                  <span style={{ color: "var(--text-muted)", fontSize: 11 }}>→</span>
+                )}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", padding: "16px 24px", borderBottom: "1px solid var(--border)", gap: 12 }}>
+          {[
+            { label: "Nodes", value: template.definition.nodes.length },
+            { label: "Connections", value: template.definition.edges.length },
+            { label: "Complexity", value: template.definition.nodes.length < 5 ? "Low" : template.definition.nodes.length < 10 ? "Medium" : "High" },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ textAlign: "center" }}>
+              <p style={{ fontSize: 22, fontWeight: 700, color, marginBottom: 2 }}>{value}</p>
+              <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: "16px 24px", display: "flex", gap: 10 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: "10px", borderRadius: 10, background: "var(--bg-surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", cursor: "pointer", fontSize: 13, fontWeight: 500 }}
+          >
+            Close
+          </button>
+          <button
+            style={{
+              flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              padding: "10px", borderRadius: 10,
+              background: "linear-gradient(135deg, #6366F1, #8B5CF6)",
+              color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
+            }}
+            onClick={onClose}
+          >
+            <Copy size={13} />
+            Use Template
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Template card ─────────────────────────────────────────────────────────────
+
+function TemplateCard({ template, onPreview }: { template: Template; onPreview: () => void }) {
+  const color = COLOR_MAP[template.category] ?? "#6366F1";
+  return (
+    <div
+      style={{
+        background: "var(--bg-panel)", border: "1px solid var(--border)",
+        borderRadius: 14, overflow: "hidden", display: "flex", flexDirection: "column",
+        transition: "border-color 200ms ease, transform 200ms ease",
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-strong)"; (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.transform = "none"; }}
+    >
+      {/* Top accent + avatar */}
+      <div style={{ height: 120, background: `linear-gradient(135deg, ${color}20, ${color}08)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, borderBottom: "1px solid var(--border)" }}>
+        <span style={{ fontSize: 48 }}>{template.avatar ?? "🤖"}</span>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col p-4">
-        <h3 className="font-bold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-          {template.name}
-        </h3>
-        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 flex-1 line-clamp-2">
-          {template.description}
-        </p>
+      {/* Body */}
+      <div style={{ padding: "14px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
+            {template.name}
+          </h3>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+            {template.description}
+          </p>
+        </div>
 
-        {/* Badges */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-            {template.category}
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{
+            padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+            background: color + "18", color,
+            border: `1px solid ${color}30`,
+          }}>
+            {CATEGORY_LABELS[template.category] ?? template.category}
           </span>
-          <span className="px-2 py-0.5 text-xs rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
             {template.nodeCount} nodes
           </span>
         </div>
 
-        {/* Buttons */}
-        <div className="flex gap-2">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onPreview(template)}
-            className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium flex items-center justify-center gap-1"
+        <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+          <button
+            onClick={onPreview}
+            style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+              padding: "7px", borderRadius: 10,
+              background: "var(--bg-surface)", border: "1px solid var(--border)",
+              color: "var(--text-secondary)", cursor: "pointer", fontSize: 12, fontWeight: 500,
+              transition: "border-color 150ms ease, color 150ms ease",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
           >
-            <Eye size={14} />
-            Preview
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onUse(template)}
-            className="flex-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-medium flex items-center justify-center gap-1"
+            <Eye size={12} /> Preview
+          </button>
+          <button
+            style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+              padding: "7px", borderRadius: 10,
+              background: "linear-gradient(135deg, #6366F1, #8B5CF6)",
+              color: "#fff", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+            }}
           >
-            <Copy size={14} />
-            Use
-          </motion.button>
+            <Copy size={12} /> Use
+          </button>
         </div>
       </div>
-    </motion.div>
-  )
+    </div>
+  );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function TemplatesPage() {
-  const [search, setSearch] = useState("")
-  const [filter, setFilter] = useState<typeof TEMPLATE_CATEGORIES[number]>("All")
-  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null)
-  const [usedTemplate, setUsedTemplate] = useState<Template | null>(null)
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<typeof ALL_CATEGORIES[number]>("All");
+  const [preview, setPreview] = useState<Template | null>(null);
 
-  const filtered = TEMPLATES.filter((template) => {
-    const matchesSearch = (
-      template.name.toLowerCase().includes(search.toLowerCase()) ||
-      template.description.toLowerCase().includes(search.toLowerCase())
-    )
-    const matchesFilter = filter === "All" || template.category === filter
-    return matchesSearch && matchesFilter
-  })
-
-  const handleUse = useCallback((template: Template) => {
-    setUsedTemplate(template)
-    setTimeout(() => {
-      setUsedTemplate(null)
-    }, 2000)
-  }, [])
+  const filtered = TEMPLATES.filter((t) => {
+    const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase());
+    const matchCat = filter === "All" || t.category === filter;
+    return matchSearch && matchCat;
+  });
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="h-full overflow-auto bg-white dark:bg-slate-950"
-    >
-      <div className="max-w-7xl mx-auto p-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-            Template Gallery
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            Choose a pre-built workflow and customize it for your needs
-          </p>
-        </div>
-
-        {/* Search and Filter */}
-        <div className="mb-8 space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search templates..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Filter pills */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {TEMPLATE_CATEGORIES.map((cat) => (
-              <motion.button
-                key={cat}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setFilter(cat)}
-                className={cn(
-                  "px-4 py-1.5 rounded-full font-medium text-sm whitespace-nowrap transition-all",
-                  filter === cat
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                )}
-              >
-                {cat}
-              </motion.button>
-            ))}
-          </div>
-        </div>
-
-        {/* Grid */}
-        {filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered.map((template, idx) => (
-              <motion.div
-                key={template.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-              >
-                <TemplateCard
-                  template={template}
-                  onUse={handleUse}
-                  onPreview={setPreviewTemplate}
-                />
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-16"
-          >
-            <p className="text-slate-500 dark:text-slate-400 mb-2">
-              No templates found for "{search}"
-            </p>
-            <p className="text-sm text-slate-400 dark:text-slate-500">
-              Try adjusting your search or category filter
-            </p>
-          </motion.div>
-        )}
+    <div style={{ padding: "28px 36px", maxWidth: 1200, width: "100%" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.5px", color: "var(--text-primary)" }}>
+          Templates
+        </h1>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
+          Start from a pre-built flow and customize it for your use case.
+        </p>
       </div>
 
-      {/* Preview Modal */}
-      <TemplatePreview
-        template={previewTemplate}
-        onClose={() => setPreviewTemplate(null)}
-      />
+      {/* Search + filters */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+        <div style={{ position: "relative", maxWidth: 380 }}>
+          <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search templates…"
+            style={{
+              width: "100%", padding: "9px 12px 9px 34px", boxSizing: "border-box",
+              background: "var(--bg-panel)", border: "1px solid var(--border)",
+              borderRadius: 10, color: "var(--text-primary)", fontSize: 13, outline: "none",
+              transition: "border-color 150ms ease",
+            }}
+            onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
+            onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
+          />
+        </div>
 
-      {/* Toast notification */}
-      <AnimatePresence>
-        {usedTemplate && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-8 right-8 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 z-40"
-          >
-            <div className="w-2 h-2 bg-green-200 rounded-full" />
-            Template "{usedTemplate.name}" copied to your builder!
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {ALL_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setFilter(cat)}
+              style={{
+                padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500,
+                border: "1px solid",
+                borderColor: filter === cat ? "transparent" : "var(--border)",
+                background: filter === cat ? "linear-gradient(135deg, #6366F1, #8B5CF6)" : "var(--bg-panel)",
+                color: filter === cat ? "#fff" : "var(--text-secondary)",
+                cursor: "pointer", transition: "all 150ms ease",
+              }}
+            >
+              {cat === "All" ? "All" : CATEGORY_LABELS[cat] ?? cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Grid */}
+      {filtered.length > 0 ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+          {filtered.map((t) => (
+            <TemplateCard key={t.id} template={t} onPreview={() => setPreview(t)} />
+          ))}
+        </div>
+      ) : (
+        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-muted)", fontSize: 14 }}>
+          No templates found for &ldquo;{search}&rdquo;
+        </div>
+      )}
+
+      {preview && <PreviewModal template={preview} onClose={() => setPreview(null)} />}
+    </div>
+  );
 }
