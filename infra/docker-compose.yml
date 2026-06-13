@@ -13,6 +13,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/01-keycloak-db.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U threadly"]
       interval: 5s
@@ -85,9 +86,39 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── Identity & Auth (Keycloak) ──────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    restart: unless-stopped
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: threadly
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-threadly_dev}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8080' 2>/dev/null || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
+
   # ── Application services ───────────────────────────────────────────
   threadly-core:
-    image: infra-threadly-core:latest
+    build:
+      context: ../threadly-core
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -102,20 +133,26 @@ services:
       CENTRIFUGO_URL: http://centrifugo:8000
       CENTRIFUGO_API_KEY: ${CENTRIFUGO_HTTP_API_KEY:-dev_api_key}
       CENTRIFUGO_TOKEN_SECRET: ${CENTRIFUGO_TOKEN_HMAC_SECRET:-dev_secret_change_in_prod}
-      JWT_PRIVATE_KEY_PATH: /app/keys/private.pem
-      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
       S3_ENDPOINT: http://minio:9000
       S3_BUCKET: ${S3_BUCKET:-threadly-kb}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
-    volumes:
-      - ./keys:/app/keys:ro
+      THREADLY_CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003}
+      THREADLY_AI_SHARED_SECRET: ${CORE_AI_SHARED_SECRET:-dev_shared_secret}
+      # Keycloak – JWT validation + Admin API for onboarding
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_REALM: threadly
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-threadly-admin}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-threadly-admin-secret}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/threadly/protocol/openid-connect/certs
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       centrifugo:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
@@ -153,27 +190,8 @@ services:
       timeout: 5s
       retries: 10
 
-  threadly-web:
-    build:
-      context: ../frontend/threadly-web
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev_nextauth_secret}
-      NEXT_PUBLIC_API_URL: http://localhost:8080
-      NEXT_PUBLIC_CENTRIFUGO_URL: ws://localhost:8000/connection/websocket
-      NEXT_PUBLIC_CDN_URL: http://localhost:3000
-    depends_on:
-      threadly-core:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\""]
-      interval: 15s
-      timeout: 5s
-      retries: 10
+  # threadly-web is served by the dev server (pnpm dev --port 3002)
+  # Remove this service to avoid conflict with the dev frontend
 
   # ── Observability ──────────────────────────────────────────────────
   prometheus:
@@ -200,4 +218,5 @@ volumes:
   redis_data:
   qdrant_data:
   minio_data:
+  keycloak_data:
   grafana_data:

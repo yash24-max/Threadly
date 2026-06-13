@@ -60,12 +60,14 @@ export default function SignupPage() {
     e.preventDefault();
     setError(""); setLoading(true);
     try {
-      await api.post("/v1/auth/signup", {
-        email:    form.email,
+      // Create Keycloak user + org via onboarding endpoint
+      await api.post("/v1/auth/register", {
         name:     form.name,
-        password: form.password,
         orgName:  form.orgName,
+        email:    form.email,
+        password: form.password,
       });
+      // Auto sign-in via Keycloak ROPC after registration
       const res = await signIn("credentials", { email: form.email, password: form.password, redirect: false });
       if (res?.error) { setError("Account created! Please sign in."); router.push("/login"); }
       else router.push("/dashboard");

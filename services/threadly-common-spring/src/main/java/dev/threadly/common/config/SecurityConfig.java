@@ -36,10 +36,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Configuration
 public class SecurityConfig {
 
-  @Value("${threadly.jwt.issuer:https://threadly.dev}")
-  private String jwtIssuer;
-
-  @Value("${threadly.jwt.public-key-url:http://identity-service:3001/.well-known/jwks.json}")
+  /**
+   * Keycloak JWKS endpoint.
+   * Default points to local dev Keycloak; overridden via env var in Docker/K8s:
+   *   KEYCLOAK_JWKS_URI=http://keycloak:8080/realms/threadly/protocol/openid-connect/certs
+   */
+  @Value("${keycloak.jwks-uri:http://localhost:8090/realms/threadly/protocol/openid-connect/certs}")
   private String jwksUrl;
 
   /**
@@ -108,22 +110,22 @@ public class SecurityConfig {
         try {
           var jwt = jwtDecoder.decode(token);
 
-          // Extract org_id, user_id, email from claims
-          String orgIdStr = jwt.getClaimAsString("org_id");
-          String userIdStr = jwt.getClaimAsString("sub"); // JWT standard: subject is user_id
-          String email = jwt.getClaimAsString("email");
+          // Keycloak JWT claim names (set by Protocol Mappers on threadly-app client):
+          //   orgId  → user attribute "orgId"   (custom mapper)
+          //   role   → user attribute "role"    (custom mapper)
+          //   sub    → Keycloak user UUID       (standard)
+          //   email  → user email               (standard OIDC)
+          String orgIdStr  = jwt.getClaimAsString("orgId");
+          String userIdStr = jwt.getClaimAsString("sub");
+          String email     = jwt.getClaimAsString("email");
+          String role      = jwt.getClaimAsString("role");
 
-          if (orgIdStr != null) {
-            TenantContext.setTenantId(UUID.fromString(orgIdStr));
-          }
-          if (userIdStr != null) {
-            TenantContext.setUserId(UUID.fromString(userIdStr));
-          }
-          if (email != null) {
-            TenantContext.setEmail(email);
-          }
+          if (orgIdStr  != null) TenantContext.setTenantId(UUID.fromString(orgIdStr));
+          if (userIdStr != null) TenantContext.setUserId(UUID.fromString(userIdStr));
+          if (email     != null) TenantContext.setEmail(email);
+          if (role      != null) TenantContext.setRole(role);
 
-          log.debug("TenantContext set: orgId={}, userId={}, email={}", orgIdStr, userIdStr, email);
+          log.debug("TenantContext set: orgId={} userId={}", orgIdStr, userIdStr);
 
         } catch (JwtException e) {
           log.warn("Invalid JWT token: {}", e.getMessage());
@@ -132,11 +134,8 @@ public class SecurityConfig {
         }
       }
 
-      try {
-        filterChain.doFilter(request, response);
-      } finally {
-        TenantContext.clear();
-      }
+      filterChain.doFilter(request, response);
+      // No TenantContext.clear() needed — Spring request attrs are auto-cleaned
     }
   }
 }

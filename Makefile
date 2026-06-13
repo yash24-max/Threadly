@@ -1,8 +1,10 @@
 .PHONY: up down logs restart ps build-services build-ai build-web build-widget build-all \
         test-all test-ai test-web test-widget test-e2e \
         lint-all lint-ai lint-web lint-widget fmt-ai fmt-web \
-        db-shell db-reset codegen gen-keys bundle-size deploy-railway \
-        k8s-deploy k8s-delete k8s-status k8s-logs health schemas seed help
+        db-shell db-reset codegen bundle-size deploy-railway \
+        k8s-deploy k8s-delete k8s-status k8s-logs \
+        keycloak-open keycloak-realm-export keycloak-reset \
+        health schemas seed help
 
 COMPOSE = docker compose -f infra/docker-compose.yml
 
@@ -91,6 +93,23 @@ lint-widget:
 
 lint-all: lint-services lint-ai lint-web lint-widget
 	@echo "All lint checks passed ✓"
+
+# ── Keycloak ──────────────────────────────────────────────────────────────────
+keycloak-open:
+	@echo "Opening Keycloak Admin UI..."
+	open http://localhost:8090/admin || xdg-open http://localhost:8090/admin
+
+keycloak-realm-export:
+	@echo "Exporting threadly realm to infra/keycloak/threadly-realm.json..."
+	$(COMPOSE) exec keycloak /opt/keycloak/bin/kc.sh export \
+		--dir /tmp/export --realm threadly
+	$(COMPOSE) cp keycloak:/tmp/export/threadly-realm.json infra/keycloak/threadly-realm.json
+	@echo "Realm exported ✓"
+
+keycloak-reset:
+	@echo "Resetting Keycloak realm (deletes all users/sessions)..."
+	$(COMPOSE) restart keycloak
+	@echo "Keycloak restarted — realm will re-import from infra/keycloak/threadly-realm.json"
 
 # ── Database ──────────────────────────────────────────────────────────────────
 db-shell:

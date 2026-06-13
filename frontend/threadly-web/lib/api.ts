@@ -26,6 +26,28 @@ function generateTraceId(): string {
     .join("");
 }
 
+/** Returns true if the string is just an HTTP status phrase (not a useful message). */
+function isHttpStatusWord(s: string): boolean {
+  return /^(forbidden|unauthorized|not found|bad request|internal server error|ok|conflict|created|no content)$/i.test(s.trim());
+}
+
+/** Maps HTTP status codes to user-friendly messages. */
+function friendlyError(status: number, fallback: string): string {
+  const map: Record<number, string> = {
+    400: "Invalid request — please check your input.",
+    401: "Your session has expired. Please sign in again.",
+    403: "You don't have permission to do this.",
+    404: "The requested resource was not found.",
+    409: "This already exists. Try a different value.",
+    422: "The request data is invalid.",
+    429: "Too many requests — please wait a moment and try again.",
+    500: "A server error occurred. Please try again.",
+    502: "The server is temporarily unavailable.",
+    503: "Service unavailable — please try again shortly.",
+  };
+  return map[status] ?? (isHttpStatusWord(fallback) ? `Request failed (${status}).` : fallback);
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { token?: string } = {}
@@ -44,10 +66,14 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    let detail = res.statusText;
+    let detail = friendlyError(res.status, res.statusText);
     try {
       const body = await res.json();
-      detail = body.detail ?? body.message ?? detail;
+      // Spring Boot error shape: { message } or { detail } or { error }
+      const raw = body.message ?? body.detail ?? body.error ?? null;
+      if (raw && typeof raw === "string" && !isHttpStatusWord(raw)) {
+        detail = raw;
+      }
     } catch {}
     throw new ApiError(res.status, detail);
   }

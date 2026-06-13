@@ -3,15 +3,12 @@ import { CommandPalette } from "@/components/command-palette";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    /* Force dark theme for the app shell */
     <div
-      className="dark"
       style={{
         display: "flex",
         height: "100vh",
         overflow: "hidden",
         background: "var(--bg-canvas)",
-        colorScheme: "dark",
       }}
     >
       <Sidebar />

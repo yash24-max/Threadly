@@ -89,3 +89,7 @@ spring.cloud.consul:
     health-check-path: /conversation-service/actuator/health
     health-check-interval: 10s
     instance-id: conversation-service-${random.value}
+
+# Keycloak JWT validation
+keycloak:
+  jwks-uri: ${KEYCLOAK_JWKS_URI:http://keycloak:8080/realms/threadly/protocol/openid-connect/certs}

@@ -134,3 +134,7 @@ logging:
     name: logs/knowledge-service.log
     max-size: 10MB
     max-history: 30
+
+# Keycloak JWT validation
+keycloak:
+  jwks-uri: ${KEYCLOAK_JWKS_URI:http://keycloak:8080/realms/threadly/protocol/openid-connect/certs}

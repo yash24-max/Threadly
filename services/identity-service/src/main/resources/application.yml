@@ -103,3 +103,7 @@ auth:
     secret: ${JWT_SECRET:defaultSecretKeyFor256BitHMACSigningAlgorithmChangeInProduction}
     access-token-expiry-seconds: 900
     refresh-token-expiry-seconds: 2592000
+
+# Keycloak JWT validation
+keycloak:
+  jwks-uri: ${KEYCLOAK_JWKS_URI:http://keycloak:8080/realms/threadly/protocol/openid-connect/certs}

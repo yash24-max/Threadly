@@ -99,3 +99,7 @@ threadly:
   services:
     ai-service:
       url: ${THREADLY_AI_URL:http://threadly-ai:8081}
+
+# Keycloak JWT validation
+keycloak:
+  jwks-uri: ${KEYCLOAK_JWKS_URI:http://keycloak:8080/realms/threadly/protocol/openid-connect/certs}
