@@ -41,6 +41,11 @@ public class LoginResponse {
   private String organizationName;
 
   /**
+   * Organization slug (URL-safe version of name) for frontend routing.
+   */
+  private String organizationSlug;
+
+  /**
    * JWT access token for authenticated requests.
    */
   private String accessToken;

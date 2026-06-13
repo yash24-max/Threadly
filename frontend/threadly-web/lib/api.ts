@@ -1,4 +1,10 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+// In the browser: use relative URL so requests go to Next.js (port 3000)
+// which proxies them via rewrites → no cross-origin CORS preflight.
+// On the server (SSR/RSC): use the full backend URL directly.
+const API_BASE =
+  typeof window !== "undefined"
+    ? ""
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080");
 
 export class ApiError extends Error {
   constructor(

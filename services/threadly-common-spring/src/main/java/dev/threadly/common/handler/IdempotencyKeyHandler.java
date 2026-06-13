@@ -1,9 +1,5 @@
 package dev.threadly.common.handler;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
@@ -17,25 +13,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
- * Annotation and aspect for idempotent request handling.
- *
- * Usage on controller methods:
- * @PostMapping("/conversations")
- * @Idempotent
- * public ResponseEntity<ConversationDTO> create(@RequestBody ConversationRequest req) { ... }
- *
- * Client must send: Idempotency-Key: <uuid>
- * Duplicate requests return cached response (without re-executing).
- */
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Idempotent {
-  /** TTL in seconds for caching response (default 24 hours) */
-  int ttlSeconds() default 86400;
-}
-
-/**
- * Aspect that intercepts @Idempotent methods and caches responses by Idempotency-Key.
+ * Aspect that intercepts {@link Idempotent} methods and caches responses by
+ * the {@code Idempotency-Key} request header.
  */
 @Aspect
 @Component

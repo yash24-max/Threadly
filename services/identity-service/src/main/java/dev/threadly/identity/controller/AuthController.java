@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.Normalizer;
+
 /**
  * REST Controller for authentication endpoints.
  * Handles user signup, login, token refresh, and logout operations.
@@ -27,6 +29,16 @@ public class AuthController {
   private final UserService userService;
   private final AuthTokenService authTokenService;
   private final OrganizationService organizationService;
+
+  /** Derives a URL-safe slug from an organization name. */
+  private static String toSlug(String name) {
+    if (name == null || name.isBlank()) return "";
+    String normalized = Normalizer.normalize(name, Normalizer.Form.NFD)
+        .replaceAll("\\p{M}", "");
+    return normalized.toLowerCase()
+        .replaceAll("[^a-z0-9]+", "-")
+        .replaceAll("^-|-$", "");
+  }
 
   /**
    * Signup endpoint - creates a new user and organization.
@@ -58,6 +70,7 @@ public class AuthController {
         .email(user.getEmail())
         .fullName(user.getFullName())
         .organizationName(org.getName())
+        .organizationSlug(toSlug(org.getName()))
         .accessToken(accessToken)
         .refreshToken(refreshToken)
         .expiresIn(900)
@@ -106,6 +119,7 @@ public class AuthController {
         .fullName(user.getFullName())
         .organizationId(user.getOrgId())
         .organizationName(orgName)
+        .organizationSlug(toSlug(orgName))
         .accessToken(accessToken)
         .refreshToken(refreshToken)
         .expiresIn(900)

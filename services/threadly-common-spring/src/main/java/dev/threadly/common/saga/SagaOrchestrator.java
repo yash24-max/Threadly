@@ -94,7 +94,7 @@ public abstract class SagaOrchestrator {
   /**
    * Execute a single step with idempotency check.
    */
-  public void executeStep(int stepIndex) {
+  public void executeStep(int stepIndex) throws Exception {
     if (stepIndex >= steps.size()) {
       throw new IllegalArgumentException("Step index out of bounds: " + stepIndex);
     }
@@ -116,7 +116,7 @@ public abstract class SagaOrchestrator {
   /**
    * Compensate (rollback) a step.
    */
-  public void compensate(int stepIndex) {
+  public void compensate(int stepIndex) throws Exception {
     if (stepIndex >= steps.size()) {
       throw new IllegalArgumentException("Step index out of bounds: " + stepIndex);
     }

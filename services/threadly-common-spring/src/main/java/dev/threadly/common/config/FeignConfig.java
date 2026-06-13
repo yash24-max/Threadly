@@ -6,21 +6,21 @@ import feign.codec.Encoder;
 import feign.okhttp.OkHttpClient;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.http.HttpMessageConverters;
 import org.springframework.cloud.openfeign.support.SpringDecoder;
 import org.springframework.cloud.openfeign.support.SpringEncoder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 
 /**
  * Default Feign configuration for all microservice clients.
  *
  * Features:
- * - 10-second connection timeout
- * - 10-second read timeout
+ * - 10-second connection/read/write timeouts
  * - OkHttp client with connection pooling
- * - Request/response logging
+ * - Spring message-converter-aware encoder/decoder
  */
 @Slf4j
 @Configuration
@@ -28,9 +28,7 @@ public class FeignConfig {
 
   private static final int TIMEOUT_SECONDS = 10;
 
-  /**
-   * Configure OkHttp client with timeouts and connection pooling.
-   */
+  /** OkHttp client with timeouts and connection pooling. */
   @Bean
   @ConditionalOnMissingBean
   public Client feignClient() {
@@ -40,26 +38,20 @@ public class FeignConfig {
         .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .connectionPool(new okhttp3.ConnectionPool(10, 5, TimeUnit.MINUTES))
         .build();
-
     return new OkHttpClient(httpClient);
   }
 
-  /**
-   * Feign encoder (request serialization).
-   */
+  /** Feign encoder backed by Spring's HttpMessageConverters. */
   @Bean
   @ConditionalOnMissingBean
-  public Encoder feignEncoder() {
-    return new SpringEncoder(new org.springframework.http.converter.FormHttpMessageConverter());
+  public Encoder feignEncoder(ObjectFactory<HttpMessageConverters> messageConverters) {
+    return new SpringEncoder(messageConverters);
   }
 
-  /**
-   * Feign decoder (response deserialization).
-   */
+  /** Feign decoder backed by Spring's HttpMessageConverters. */
   @Bean
   @ConditionalOnMissingBean
-  public Decoder feignDecoder() {
-    return new SpringDecoder(
-        () -> new org.springframework.http.converter.support.AllEncompassingFormHttpMessageConverter());
+  public Decoder feignDecoder(ObjectFactory<HttpMessageConverters> messageConverters) {
+    return new SpringDecoder(messageConverters);
   }
 }

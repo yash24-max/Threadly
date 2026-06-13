@@ -1,95 +1,113 @@
-.PHONY: up down logs restart build-all test-all lint-all fmt-all codegen db-shell gen-keys deploy-railway
+.PHONY: up down logs restart ps build-services build-ai build-web build-widget build-all \
+        test-all test-ai test-web test-widget test-e2e \
+        lint-all lint-ai lint-web lint-widget fmt-ai fmt-web \
+        db-shell db-reset codegen gen-keys bundle-size deploy-railway \
+        k8s-deploy k8s-delete k8s-status k8s-logs health schemas seed help
+
+COMPOSE = docker compose -f infra/docker-compose.yml
 
 # ── Local Dev ────────────────────────────────────────────────────────────────
 up:
-	docker compose -f infra/docker-compose.yml up -d --build
+	$(COMPOSE) up -d
 
 down:
-	docker compose -f infra/docker-compose.yml down
+	$(COMPOSE) down
 
 logs:
-	docker compose -f infra/docker-compose.yml logs -f $(s)
+	$(COMPOSE) logs -f $(s)
 
 restart:
-	docker compose -f infra/docker-compose.yml restart $(s)
+	$(COMPOSE) restart $(s)
 
 ps:
-	docker compose -f infra/docker-compose.yml ps
+	$(COMPOSE) ps
 
 # ── Build ────────────────────────────────────────────────────────────────────
-build-core:
-	cd threadly-core && ./mvnw clean package -DskipTests -q
+build-services:
+	@for svc in services/*/; do \
+		echo "Building $$svc..."; \
+		cd $$svc && ./mvnw clean package -DskipTests -q && cd ../..; \
+	done
 
 build-ai:
-	docker build -t threadly-ai:latest threadly-ai/
+	docker build -t threadly-ai:latest ai/
 
 build-web:
-	cd threadly-web && npm run build
+	cd frontend/threadly-web && pnpm run build
 
 build-widget:
 	cd threadly-widget && npm run build
 
-build-all: build-core build-ai build-web build-widget
+build-all: build-services build-ai build-web build-widget
 	@echo "All services built ✓"
 
 # ── Test ─────────────────────────────────────────────────────────────────────
-test-core:
-	cd threadly-core && ./mvnw test -Dsurefire.useFile=false
+test-services:
+	@for svc in services/*/; do \
+		echo "Testing $$svc..."; \
+		cd $$svc && ./mvnw test -Dsurefire.useFile=false && cd ../..; \
+	done
 
 test-ai:
-	cd threadly-ai && python -m pytest tests/ -v --tb=short
+	cd ai && python -m pytest tests/ -v --tb=short
 
 test-web:
-	cd threadly-web && npx vitest run
+	cd frontend/threadly-web && npx vitest run
 
 test-widget:
 	cd threadly-widget && npx vitest run
 
 test-e2e:
-	cd threadly-web && npx playwright test
+	cd frontend/threadly-web && npx playwright test
 
-test-all: test-core test-ai test-web test-widget
+test-all: test-services test-ai test-web test-widget
 	@echo "All tests passed ✓"
 
 # ── Code Quality ─────────────────────────────────────────────────────────────
-lint-core:
-	cd threadly-core && ./mvnw spotless:check
+lint-services:
+	@for svc in services/*/; do \
+		cd $$svc && ./mvnw spotless:check && cd ../..; \
+	done
 
-fmt-core:
-	cd threadly-core && ./mvnw spotless:apply
+fmt-services:
+	@for svc in services/*/; do \
+		cd $$svc && ./mvnw spotless:apply && cd ../..; \
+	done
 
 lint-ai:
-	cd threadly-ai && ruff check . && mypy app/ --strict
+	cd ai && ruff check . && mypy app/ --strict
 
 fmt-ai:
-	cd threadly-ai && ruff format .
+	cd ai && ruff format .
 
 lint-web:
-	cd threadly-web && npx tsc --noEmit && npx biome check .
+	cd frontend/threadly-web && npx tsc --noEmit && npx biome check .
 
 fmt-web:
-	cd threadly-web && npx biome format --write .
+	cd frontend/threadly-web && npx biome format --write .
 
 lint-widget:
 	cd threadly-widget && npx tsc --noEmit
 
-lint-all: lint-core lint-ai lint-web lint-widget
+lint-all: lint-services lint-ai lint-web lint-widget
 	@echo "All lint checks passed ✓"
 
 # ── Database ──────────────────────────────────────────────────────────────────
 db-shell:
-	docker compose -f infra/docker-compose.yml exec postgres psql -U threadly -d threadly
-
-db-migrate:
-	docker compose -f infra/docker-compose.yml exec threadly-core ./mvnw flyway:info
+	$(COMPOSE) exec postgres psql -U threadly -d threadly
 
 db-reset:
-	docker compose -f infra/docker-compose.yml exec postgres psql -U threadly -d threadly -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+	$(COMPOSE) exec postgres psql -U threadly -d threadly -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 	@echo "Database reset. Run 'make up' to re-apply migrations."
+
+schemas:
+	@echo "=== Database Schemas ==="
+	$(COMPOSE) exec -T postgres psql -U threadly -d threadly \
+		-c "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '%_service' ORDER BY schema_name;"
 
 # ── Code Generation ───────────────────────────────────────────────────────────
 codegen:
-	cd threadly-web && bash ../scripts/codegen-api.sh
+	cd frontend/threadly-web && bash ../../scripts/codegen-api.sh
 
 # ── Secrets ───────────────────────────────────────────────────────────────────
 gen-keys:
@@ -105,7 +123,6 @@ bundle-size:
 
 # ── Deploy ────────────────────────────────────────────────────────────────────
 deploy-railway:
-	railway up --service threadly-core
 	railway up --service threadly-ai
 	railway up --service threadly-web
 
@@ -134,35 +151,23 @@ k8s-status:
 k8s-logs:
 	kubectl logs -n threadly -f deployment/$(s) 2>/dev/null || kubectl logs -n threadly -f statefulset/$(s)
 
-k8s-consul-port-forward:
-	@echo "Forwarding Consul UI to http://localhost:8500"
-	kubectl port-forward -n threadly svc/consul 8500:8500
-
 # ── Health Checks ──────────────────────────────────────────────────────────────
 health:
 	@echo "=== Checking Service Health ==="
-	@for port in 3001 3002 3003 3004 3005 3006 3007 3008 3009; do \
-		echo -n "Service on :$$port - "; \
-		curl -s http://localhost:$$port/health | grep -q '"status":"UP"' && echo "✓ UP" || echo "✗ DOWN"; \
-	done
-	@echo "\n=== Checking Infrastructure ==="
-	@echo -n "Consul on :8500 - " && curl -s http://localhost:8500/v1/status/leader | grep -q '8300' && echo "✓ UP" || echo "✗ DOWN"
-	@echo -n "Kafka on :9092 - " && docker exec threadly-kafka kafka-broker-api-versions.sh --bootstrap-server=localhost:9092 >/dev/null 2>&1 && echo "✓ UP" || echo "✗ DOWN"
-	@echo -n "Redis on :6379 - " && redis-cli -a threadly_dev ping >/dev/null 2>&1 && echo "✓ UP" || echo "✗ DOWN"
-	@echo -n "Postgres on :5432 - " && pg_isready -h localhost -U threadly >/dev/null 2>&1 && echo "✓ UP" || echo "✗ DOWN"
-	@echo -n "Qdrant on :6333 - " && curl -s http://localhost:6333/health >/dev/null 2>&1 && echo "✓ UP" || echo "✗ DOWN"
+	@echo -n "threadly-core  :8080 - " && curl -sf http://localhost:8080/actuator/health | python3 -c "import sys,json; print('✓ UP' if json.load(sys.stdin).get('status')=='UP' else '✗ DOWN')" 2>/dev/null || echo "✗ DOWN"
+	@echo -n "threadly-ai    :8081 - " && curl -sf http://localhost:8081/health > /dev/null && echo "✓ UP" || echo "✗ DOWN"
+	@echo -n "threadly-web   :3000 - " && curl -sf http://localhost:3000 > /dev/null && echo "✓ UP" || echo "✗ DOWN"
+	@echo -n "centrifugo     :8000 - " && curl -sf http://localhost:8000/health > /dev/null && echo "✓ UP" || echo "✗ DOWN"
+	@echo ""
+	@echo "=== Infrastructure ==="
+	@echo -n "Redis    :6379 - " && redis-cli -a threadly_dev ping > /dev/null 2>&1 && echo "✓ UP" || echo "✗ DOWN"
+	@echo -n "Postgres :5432 - " && pg_isready -h localhost -U threadly > /dev/null 2>&1 && echo "✓ UP" || echo "✗ DOWN"
+	@echo -n "Qdrant   :6333 - " && curl -sf http://localhost:6333/health > /dev/null && echo "✓ UP" || echo "✗ DOWN"
+	@echo -n "MinIO    :9000 - " && curl -sf http://localhost:9000/minio/health/live > /dev/null && echo "✓ UP" || echo "✗ DOWN"
 
-services:
-	@echo "=== Registered Services (Consul) ==="
-	curl -s http://localhost:8500/ui/dc1/services | jq -r '.[] | .Service + ": " + .Address' 2>/dev/null || curl -s http://localhost:8500/v1/catalog/services | jq '.' 2>/dev/null
-
-schemas:
-	@echo "=== Database Schemas ==="
-	docker compose -f infra/docker-compose.yml exec -T postgres psql -U threadly -d threadly -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '%_service' ORDER BY schema_name;"
-
-kafka-topics:
-	@echo "=== Kafka Topics ==="
-	docker exec threadly-kafka kafka-topics.sh --list --bootstrap-server localhost:29092
+# ── Dev (frontend only, backend via Docker) ───────────────────────────────────
+dev-web:
+	cd frontend/threadly-web && pnpm dev --port 3002
 
 # ── Seed ─────────────────────────────────────────────────────────────────────
 seed:
@@ -174,31 +179,35 @@ help:
 	@echo "Threadly — Available targets:"
 	@echo ""
 	@echo "Local Development (Docker Compose):"
-	@echo "  make up            Start all services"
-	@echo "  make down          Stop all services"
-	@echo "  make logs s=<svc>  Tail service logs"
-	@echo "  make build-all     Build all services"
-	@echo "  make test-all      Run all tests"
-	@echo "  make health        Check all service health"
-	@echo "  make services      List registered Consul services"
-	@echo "  make schemas       Show created database schemas"
-	@echo "  make kafka-topics  List Kafka topics"
+	@echo "  make up              Start all services"
+	@echo "  make down            Stop all services"
+	@echo "  make logs s=<svc>    Tail service logs"
+	@echo "  make restart s=<svc> Restart a service"
+	@echo "  make ps              Show running containers"
+	@echo "  make health          Check all service health"
+	@echo "  make dev-web         Start frontend dev server on :3002"
 	@echo ""
-	@echo "Build & Quality:"
-	@echo "  make build-all     Build all services"
-	@echo "  make test-all      Run all tests"
-	@echo "  make lint-all      Run all linters"
-	@echo "  make fmt-core      Format Java code"
+	@echo "Build:"
+	@echo "  make build-services  Build all Java microservices"
+	@echo "  make build-ai        Build AI service Docker image"
+	@echo "  make build-web       Build Next.js frontend"
+	@echo "  make build-all       Build everything"
 	@echo ""
-	@echo "Kubernetes Deployment:"
-	@echo "  make k8s-deploy    Deploy to Kubernetes"
-	@echo "  make k8s-delete    Delete Kubernetes deployment"
-	@echo "  make k8s-status    Show Kubernetes status"
-	@echo "  make k8s-logs s=<svc>  Tail Kubernetes logs"
+	@echo "Test & Quality:"
+	@echo "  make test-all        Run all tests"
+	@echo "  make lint-all        Run all linters"
+	@echo "  make fmt-services    Format all Java code"
 	@echo ""
-	@echo "Database & Configuration:"
-	@echo "  make db-shell      Open Postgres shell"
-	@echo "  make gen-keys      Generate RSA key pair"
-	@echo "  make codegen       Regenerate TypeScript API hooks"
-	@echo "  make bundle-size   Check widget bundle size"
+	@echo "Database:"
+	@echo "  make db-shell        Open Postgres shell"
+	@echo "  make db-reset        Reset database (destructive)"
+	@echo "  make schemas         Show service schemas"
+	@echo "  make gen-keys        Generate RSA key pair"
+	@echo "  make codegen         Regenerate TypeScript API hooks"
+	@echo "  make bundle-size     Check widget bundle size"
+	@echo ""
+	@echo "Kubernetes:"
+	@echo "  make k8s-deploy      Deploy to Kubernetes"
+	@echo "  make k8s-status      Show Kubernetes status"
+	@echo "  make k8s-logs s=<svc> Tail Kubernetes logs"
 	@echo ""

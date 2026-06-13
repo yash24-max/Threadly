@@ -41,6 +41,11 @@ public class SignupResponse {
   private String organizationName;
 
   /**
+   * Organization slug (URL-safe version of name) for frontend routing.
+   */
+  private String organizationSlug;
+
+  /**
    * JWT access token for immediate authenticated requests.
    */
   private String accessToken;

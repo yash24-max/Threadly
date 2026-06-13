@@ -87,3 +87,15 @@ runtime:
   max-execution-depth: 100
   node-execution-timeout-ms: 30000
   enable-variable-resolution: true
+
+centrifugo:
+  url: ${CENTRIFUGO_URL:http://centrifugo:8000}
+  api-key: ${CENTRIFUGO_API_KEY:dev_api_key}
+  token-secret: ${CENTRIFUGO_TOKEN_SECRET:dev_secret_change_in_prod}
+
+threadly:
+  ai:
+    default-provider: ${AI_DEFAULT_PROVIDER:anthropic}
+  services:
+    ai-service:
+      url: ${THREADLY_AI_URL:http://threadly-ai:8081}

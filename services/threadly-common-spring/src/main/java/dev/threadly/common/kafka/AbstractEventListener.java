@@ -4,13 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.rebalance.ConsumerSeekToCurrentErrorHandler;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retry;
+import org.springframework.retry.annotation.Retryable;
 
 /**
  * Abstract base class for Kafka event listeners.
@@ -110,7 +109,7 @@ public abstract class AbstractEventListener {
    * @param partition Kafka partition ID
    * @param offset Message offset
    */
-  @Retry(
+  @Retryable(
       maxAttempts = 3,
       backoff = @Backoff(delay = 100, multiplier = 2)
   )

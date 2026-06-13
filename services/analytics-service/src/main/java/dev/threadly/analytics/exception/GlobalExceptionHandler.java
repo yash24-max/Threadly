@@ -64,21 +64,6 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handle RuntimeException.
-     */
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException e) {
-        log.error("Runtime error", e);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "INTERNAL_SERVER_ERROR");
-        response.put("message", "An internal server error occurred");
-        response.put("timestamp", Instant.now());
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-    }
-
-    /**
      * Handle generic exceptions.
      */
     @ExceptionHandler(Exception.class)

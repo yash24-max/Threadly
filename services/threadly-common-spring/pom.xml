@@ -20,12 +20,12 @@
   <properties>
     <java.version>21</java.version>
     <lombok.version>1.18.34</lombok.version>
-    <mapstruct.version>1.6.2</mapstruct.version>
     <jjwt.version>0.12.6</jjwt.version>
     <resilience4j.version>2.2.0</resilience4j.version>
     <spring-cloud.version>2024.0.0</spring-cloud.version>
     <opentelemetry.version>1.38.0</opentelemetry.version>
     <testcontainers.version>1.20.3</testcontainers.version>
+    <rest-assured.version>5.5.0</rest-assured.version>
   </properties>
 
   <dependencyManagement>
@@ -63,13 +63,31 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
 
+    <!-- OAuth2 Resource Server (JWT RS256 validation) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+    </dependency>
+
+    <!-- Redis (optional in IdempotencyKeyHandler) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+
     <!-- Spring Cloud Feign (REST client) -->
     <dependency>
       <groupId>org.springframework.cloud</groupId>
       <artifactId>spring-cloud-starter-openfeign</artifactId>
     </dependency>
 
-    <!-- Resilience4j (circuit breaker, retry) -->
+    <!-- OkHttp transport for Feign -->
+    <dependency>
+      <groupId>io.github.openfeign</groupId>
+      <artifactId>feign-okhttp</artifactId>
+    </dependency>
+
+    <!-- Resilience4j -->
     <dependency>
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-spring-boot3</artifactId>
@@ -84,6 +102,21 @@
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-retry</artifactId>
       <version>${resilience4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-feign</artifactId>
+      <version>${resilience4j.version}</version>
+    </dependency>
+
+    <!-- Spring Retry (for @Retry in AbstractEventListener) -->
+    <dependency>
+      <groupId>org.springframework.retry</groupId>
+      <artifactId>spring-retry</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-aspects</artifactId>
     </dependency>
 
     <!-- Kafka -->
@@ -101,7 +134,7 @@
     <dependency>
       <groupId>io.opentelemetry.instrumentation</groupId>
       <artifactId>opentelemetry-instrumentation-annotations</artifactId>
-      <version>${opentelemetry.version}</version>
+      <version>2.9.0</version>
     </dependency>
     <dependency>
       <groupId>io.micrometer</groupId>
@@ -145,23 +178,56 @@
       <artifactId>jackson-databind</artifactId>
     </dependency>
 
-    <!-- Testing -->
+    <!--
+      Test utilities (AbstractIntegrationTest, MicroservicesIntegrationTest, etc.)
+      are kept in src/main/java so consuming modules can use them as test base classes.
+      Dependencies are compile-scoped here; consumers depend on this artifact as <scope>test</scope>.
+    -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
+      <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.junit.vintage</groupId>
+          <artifactId>junit-vintage-engine</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.kafka</groupId>
+      <artifactId>spring-kafka-test</artifactId>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
       <version>${testcontainers.version}</version>
-      <scope>test</scope>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>postgresql</artifactId>
       <version>${testcontainers.version}</version>
-      <scope>test</scope>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>kafka</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <version>${rest-assured.version}</version>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 
@@ -173,6 +239,18 @@
         <configuration>
           <skip>true</skip>
         </configuration>
+      </plugin>
+      <!-- Also produce test-jar so consumers can depend on shared test utilities -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

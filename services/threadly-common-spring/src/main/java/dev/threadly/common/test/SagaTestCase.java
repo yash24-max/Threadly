@@ -89,7 +89,7 @@ public abstract class SagaTestCase {
     log.info("Setting up saga test case");
     // Initialize Kafka broker if needed
     if (embeddedKafkaBroker != null) {
-      embeddedKafkaBroker.isRunning();
+      log.debug("EmbeddedKafkaBroker: {}", embeddedKafkaBroker.getBrokersAsString());
     }
   }
 

@@ -190,7 +190,7 @@ public abstract class CircuitBreakerTestCase {
    * @param error Exception to record
    */
   protected void recordFailure(CircuitBreaker breaker, Throwable error) {
-    breaker.onError(0, error);
+    breaker.onError(0, java.util.concurrent.TimeUnit.NANOSECONDS, error);
     log.info("Recorded failure for circuit breaker: {} -> {}", breaker.getName(), error.getClass().getSimpleName());
   }
 

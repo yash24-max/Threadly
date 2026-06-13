@@ -137,27 +137,6 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Handle generic runtime exceptions (500).
-   */
-  @ExceptionHandler(RuntimeException.class)
-  public ResponseEntity<ErrorResponse> handleGenericException(
-      RuntimeException ex,
-      WebRequest request) {
-
-    log.error("Unexpected runtime exception: ", ex);
-
-    ErrorResponse error = ErrorResponse.builder()
-        .timestamp(LocalDateTime.now(ZoneId.of("UTC")))
-        .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-        .error("Internal Server Error")
-        .message("An unexpected error occurred")
-        .path(request.getDescription(false).replace("uri=", ""))
-        .build();
-
-    return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
-  }
-
-  /**
    * Handle all other exceptions (500).
    */
   @ExceptionHandler(Exception.class)

@@ -39,7 +39,7 @@ export default auth((req) => {
 
   if (!hasValidSession && !isPublic) {
     const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("callbackUrl", req.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -51,5 +51,6 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  // Exclude static assets, images, favicons, file extensions, and API proxy paths
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|v1/|auth/|.*\\..*).*)"],
 };

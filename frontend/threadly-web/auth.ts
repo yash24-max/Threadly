@@ -21,7 +21,7 @@ async function refreshAccessToken(token: any) {
   try {
     const traceId = generateTraceId();
     // Backend RefreshTokenRequest expects { refreshToken } in request body (not Authorization header)
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
+    const res = await fetch(`${API_BASE}/v1/auth/refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -61,7 +61,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           const traceId = generateTraceId();
           // Login endpoint routed through Nginx gateway to identity-service
-          const res = await fetch(`${API_BASE}/auth/login`, {
+          const res = await fetch(`${API_BASE}/v1/auth/login`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -82,9 +82,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             name: data.fullName ?? data.user?.name,
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
-            orgId: data.organizationId ?? data.user?.org?.id,
-            orgName: data.organizationName ?? data.user?.org?.name ?? "",
-            orgSlug: data.organizationSlug ?? data.user?.org?.slug ?? "",
+            orgId: data.organizationId ?? data.user?.orgId ?? data.user?.org?.id,
+            orgName: data.organizationName ?? data.user?.orgName ?? data.user?.org?.name ?? "",
+            orgSlug: data.organizationSlug ?? data.user?.orgSlug ?? data.user?.org?.slug ?? "",
             role: data.role ?? data.user?.role ?? "OWNER",
           };
         } catch {

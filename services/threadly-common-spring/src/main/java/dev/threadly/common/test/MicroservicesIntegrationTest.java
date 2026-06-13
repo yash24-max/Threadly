@@ -6,7 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.GenericContainer;
@@ -299,7 +299,7 @@ public abstract class MicroservicesIntegrationTest {
             return this;
         }
 
-        public Object then() {
+        public io.restassured.response.ValidatableResponse then() {
             return given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + authToken)

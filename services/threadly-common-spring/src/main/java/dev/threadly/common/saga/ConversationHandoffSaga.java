@@ -31,7 +31,6 @@ import org.springframework.stereotype.Service;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ConversationHandoffSaga extends SagaOrchestrator {
 
   private final EventPublisher eventPublisher;

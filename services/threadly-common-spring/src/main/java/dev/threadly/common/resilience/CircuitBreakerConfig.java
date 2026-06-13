@@ -1,8 +1,6 @@
 package dev.threadly.common.resilience;
 
-import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
-import io.github.resilience4j.feign.FeignDecorators;
-import io.github.resilience4j.feign.Resilience4jFeign;
+// resilience4j types used via fully-qualified names to avoid class-name conflict
 import io.github.resilience4j.retry.RetryConfig;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
@@ -34,8 +32,8 @@ public class CircuitBreakerConfig {
   /**
    * Standard circuit breaker config for inter-service calls.
    */
-  public static CircuitBreakerConfig getDefaultCircuitBreakerConfig() {
-    return CircuitBreakerConfig.custom()
+  public static io.github.resilience4j.circuitbreaker.CircuitBreakerConfig getDefaultCircuitBreakerConfig() {
+    return io.github.resilience4j.circuitbreaker.CircuitBreakerConfig.custom()
         .failureRateThreshold(50) // Open if 50%+ requests fail
         .slowCallRateThreshold(50) // Open if 50%+ requests are slow
         .slowCallDurationThreshold(Duration.ofSeconds(10)) // Request > 10s is "slow"
@@ -90,10 +88,10 @@ public class CircuitBreakerConfig {
    * }
    * </pre>
    */
-  public static FeignDecorators buildFeignDecorators(
+  public static io.github.resilience4j.feign.FeignDecorators buildFeignDecorators(
       io.github.resilience4j.circuitbreaker.CircuitBreaker circuitBreaker,
       io.github.resilience4j.retry.Retry retry) {
-    return FeignDecorators.builder()
+    return io.github.resilience4j.feign.FeignDecorators.builder()
         .withCircuitBreaker(circuitBreaker)
         .withRetry(retry)
         .build();

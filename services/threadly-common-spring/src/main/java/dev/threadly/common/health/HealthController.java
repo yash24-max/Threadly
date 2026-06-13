@@ -125,7 +125,7 @@ public class HealthController {
         Map<String, Object> response = new HashMap<>();
         response.put("status", status);
         response.put("service", "not-ready");
-        response.put("details", health.getDetails());
+        response.put("details", health instanceof org.springframework.boot.actuate.health.CompositeHealth ch ? ch.getComponents() : Map.of());
         log.warn("Readiness probe: service is not ready. Status: {}", status);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
       }

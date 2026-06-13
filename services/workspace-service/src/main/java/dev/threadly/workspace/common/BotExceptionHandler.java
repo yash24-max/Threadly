@@ -62,16 +62,6 @@ public class BotExceptionHandler {
   }
 
   /**
-   * Handle generic IllegalArgumentException (validation errors)
-   */
-  @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<ErrorResponse> handleIllegalArgument(
-      IllegalArgumentException ex, WebRequest request) {
-    ErrorResponse error = ErrorResponse.validation(ex.getMessage());
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-  }
-
-  /**
    * Handle IllegalStateException
    */
   @ExceptionHandler(IllegalStateException.class)
