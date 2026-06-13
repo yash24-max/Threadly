@@ -80,7 +80,7 @@ services:
     environment:
       CENTRIFUGO_REDIS_ADDRESS: redis://:${REDIS_PASSWORD:-threadly_dev}@redis:6379
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 8000 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -182,7 +182,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   grafana:
     image: grafana/grafana:latest

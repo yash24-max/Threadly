@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'threadly-core'
+    static_configs:
+      - targets: ['threadly-core:8080']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'threadly-ai'
+    static_configs:
+      - targets: ['threadly-ai:8081']
+    metrics_path: '/metrics'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
