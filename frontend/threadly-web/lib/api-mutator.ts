@@ -1,11 +1,11 @@
 /**
  * Custom fetch mutator for Orval generated hooks.
  * Reads session token from next-auth and injects it + distributed tracing headers into every request.
- * All requests routed through Nginx gateway at process.env.NEXT_PUBLIC_API_URL.
+ * Uses relative URLs — Next.js proxy rewrites route each /v1/* path to the correct microservice.
  */
 import { getSession } from "next-auth/react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_BASE = "";
 
 /**
  * Generate a trace ID for distributed tracing across Nginx gateway and microservices.

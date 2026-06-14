@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { api } from "@/lib/api";
 import { Users, Loader2, Search, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight } from "lucide-react";
 
 interface AdminUser {
@@ -23,7 +24,6 @@ interface PageResult {
   number:        number;
 }
 
-const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_API_URL ?? "http://localhost:3010";
 
 export default function AdminUsersPage() {
   const { data: session } = useSession();
@@ -34,20 +34,14 @@ export default function AdminUsersPage() {
 
   const { data, isLoading } = useQuery<PageResult>({
     queryKey: ["admin-users", page],
-    queryFn:  () => fetch(`${ADMIN_URL}/admin/users?page=${page}&size=25`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()),
+    queryFn:  () => api.get<PageResult>(`/admin/api/users?page=${page}&size=25`, token),
     enabled: !!token,
     staleTime: 30_000,
   });
 
   const toggleStatus = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
-      fetch(`${ADMIN_URL}/admin/users/${id}/status`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      }),
+      api.patch(`/admin/api/users/${id}/status`, { enabled }, token),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 

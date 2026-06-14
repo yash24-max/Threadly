@@ -44,7 +44,7 @@ export function LivePreviewPane({ botId, onClose }: Props) {
 
     try {
       // Send via public widget HTTP endpoint (no auth needed)
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"}/v1/widget/message`, {
+      await fetch(`/v1/widget/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ botId, visitorId, text }),

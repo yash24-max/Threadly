@@ -110,13 +110,20 @@ export default function DashboardPage() {
   const token = session?.accessToken;
   const qc = useQueryClient();
 
-  // BE-001: SSE doesn't support auth headers — polling only until backend adds token param
+  // Live counter SSE — pushes updated stats every 5 s from analytics-service
   useEffect(() => {
     if (!token) return;
-    // Commented out SSE until BE-001 is fixed:
-    // const es = new EventSource(`${process.env.NEXT_PUBLIC_API_URL}/v1/analytics/live`);
-    // es.addEventListener("stats", ...); es.close on cleanup
-  }, [token]);
+    const es = new EventSource(`/v1/analytics/live`);
+    es.addEventListener("stats", (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        qc.setQueryData(["analytics", "stats"], (prev: DashboardStats | undefined) =>
+          prev ? { ...prev, ...data } : data
+        );
+      } catch {}
+    });
+    return () => es.close();
+  }, [token, qc]);
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["analytics", "stats"],

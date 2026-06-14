@@ -1,10 +1,7 @@
-// In the browser: use relative URL so requests go to Next.js (port 3000)
-// which proxies them via rewrites → no cross-origin CORS preflight.
-// On the server (SSR/RSC): use the full backend URL directly.
-const API_BASE =
-  typeof window !== "undefined"
-    ? ""
-    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080");
+// Always use relative URLs — the Next.js dev server (port 3000) proxies all
+// /v1/* and /auth/* requests to the correct microservice via rewrites.
+// On the server side, relative URLs resolve against the internal Next.js server.
+const API_BASE = "";
 
 export class ApiError extends Error {
   constructor(

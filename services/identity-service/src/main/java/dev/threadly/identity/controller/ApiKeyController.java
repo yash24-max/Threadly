@@ -18,7 +18,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api-keys")
+@RequestMapping("/v1/api-keys")
 @RequiredArgsConstructor
 public class ApiKeyController {
 

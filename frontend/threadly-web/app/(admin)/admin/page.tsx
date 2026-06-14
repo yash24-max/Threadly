@@ -12,8 +12,6 @@ interface PlatformStats {
   totalFlows: number;
 }
 
-const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_API_URL ?? "http://localhost:3010";
-
 function StatCard({ label, value, icon: Icon, color }: {
   label: string; value: number | undefined; icon: React.ElementType; color: string;
 }) {
@@ -47,9 +45,7 @@ export default function AdminOverviewPage() {
 
   const { data: stats } = useQuery<PlatformStats>({
     queryKey: ["admin-stats"],
-    queryFn: () => fetch(`${ADMIN_URL}/admin/stats`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()),
+    queryFn: () => api.get<PlatformStats>("/admin/api/stats", token),
     enabled: !!token,
     staleTime: 60_000,
   });

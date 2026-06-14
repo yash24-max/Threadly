@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { api } from "@/lib/api";
 import { Building2, Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Org {
@@ -21,7 +22,6 @@ interface PageResult {
   number:        number; // current page (0-indexed)
 }
 
-const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_API_URL ?? "http://localhost:3010";
 
 export default function AdminOrgsPage() {
   const { data: session } = useSession();
@@ -31,9 +31,7 @@ export default function AdminOrgsPage() {
 
   const { data, isLoading } = useQuery<PageResult>({
     queryKey: ["admin-orgs", page],
-    queryFn:  () => fetch(`${ADMIN_URL}/admin/orgs?page=${page}&size=20`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.json()),
+    queryFn:  () => api.get<PageResult>(`/admin/api/orgs?page=${page}&size=20`, token),
     enabled: !!token,
     staleTime: 30_000,
   });

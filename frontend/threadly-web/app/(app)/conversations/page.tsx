@@ -216,12 +216,8 @@ function ConversationsInner() {
     const orgId = session.user.orgId;
 
     const fetchToken = async () => {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"}/v1/realtime/token`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const d = await res.json();
-      return d.token as string;
+      const d = await api.get<{ token: string }>("/v1/realtime/token", token);
+      return d.token;
     };
 
     const c = new Centrifuge(CENTRIFUGO_URL, { getToken: fetchToken });

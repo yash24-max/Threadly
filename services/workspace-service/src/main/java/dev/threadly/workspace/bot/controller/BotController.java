@@ -203,6 +203,24 @@ public class BotController {
   }
 
   /**
+   * Get embed snippet for a bot.
+   * GET /api/v1/bots/{botId}/embed
+   */
+  @GetMapping("/{botId}/embed")
+  public ResponseEntity<java.util.Map<String, String>> getEmbedSnippet(
+      @PathVariable String botId,
+      Principal principal) {
+    String orgId = getOrgIdFromContext();
+    // Verify bot belongs to this org
+    botService.getBot(botId, orgId, principal.getName());
+
+    String snippet = String.format(
+        "<script src=\"https://cdn.threadly.dev/widget.js\" data-bot-id=\"%s\" defer></script>",
+        botId);
+    return ResponseEntity.ok(java.util.Map.of("snippet", snippet));
+  }
+
+  /**
    * Extract organization ID from the Keycloak JWT claim "orgId".
    * Falls back to the X-Org-ID request header for internal service calls.
    *
