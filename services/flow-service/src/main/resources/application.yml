@@ -17,7 +17,8 @@ spring:
         default_schema: flow_service
 
   flyway:
-    baseline-on-migrate: false
+    baseline-on-migrate: true
+    repair-on-migrate: true
     enabled: true
     locations: classpath:db/migration
     schemas: flow_service

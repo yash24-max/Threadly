@@ -17,7 +17,8 @@ spring:
         default_schema: analytics_service
 
   flyway:
-    baseline-on-migrate: false
+    baseline-on-migrate: true
+    repair-on-migrate: true
     enabled: true
     locations: classpath:db/migration
     schemas: analytics_service
