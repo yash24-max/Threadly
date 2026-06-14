@@ -97,30 +97,6 @@ public class ExecutionController {
   }
 
   /**
-   * Resume paused session
-   * POST /api/v1/sessions/{sessionId}/resume
-   */
-  @PostMapping("/{sessionId}/resume")
-  public ResponseEntity<?> resumeSession(@PathVariable String sessionId) {
-    log.info("Resuming paused session: {}", sessionId);
-
-    try {
-      Session session = sessionService.getSession(sessionId);
-
-      if (session.getState() != Session.SessionState.PAUSED) {
-        return ResponseEntity.badRequest().body(
-            Map.of("error", "Session is not in PAUSED state")
-        );
-      }
-
-      sessionService.resumeSession(sessionId);
-      return ResponseEntity.ok(Map.of("message", "Session resumed"));
-    } catch (SessionNotFoundException e) {
-      return ResponseEntity.notFound().build();
-    }
-  }
-
-  /**
    * Map ExecutionLog entity to DTO
    */
   private ExecutionLogDto mapToDto(ExecutionLog log) {

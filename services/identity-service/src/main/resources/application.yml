@@ -22,7 +22,8 @@ spring:
         order_updates: true
 
   flyway:
-    baseline-on-migrate: false
+    baseline-on-migrate: true
+    repair-on-migrate: true
     enabled: true
     locations: classpath:db/migration
     schemas: identity_service

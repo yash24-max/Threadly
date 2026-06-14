@@ -34,7 +34,7 @@ public class ConversationTag {
     /**
      * Reference to the conversation being tagged.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "conversation_id", nullable = false)
     @ToString.Exclude
     private Conversation conversation;

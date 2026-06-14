@@ -1,5 +1,6 @@
 package dev.threadly.conversation.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -21,6 +22,9 @@ import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
 @EnableKafka
 public class KafkaConfig {
 
+    @Value("${spring.kafka.bootstrap-servers:localhost:9092}")
+    private String bootstrapServers;
+
     /**
      * Configure Kafka consumer factory.
      *
@@ -29,7 +33,7 @@ public class KafkaConfig {
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
-        props.put(BOOTSTRAP_SERVERS_CONFIG, "${spring.kafka.bootstrap-servers:localhost:9092}");
+        props.put(BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(GROUP_ID_CONFIG, "conversation-service");
         props.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());

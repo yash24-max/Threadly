@@ -21,11 +21,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Manages org team members.
- * Paths:
- *   GET  /v1/team/members        — list all members of the caller's org
- *   POST /v1/team/invite         — invite a new member by email
- *   DELETE /v1/team/members/{id} — remove a member
+ * Manages org team members. Paths: GET  /v1/team/members        — list all members of the caller's org POST /v1/team/invite         — invite a new
+ * member by email DELETE /v1/team/members/{id} — remove a member
  */
 @Slf4j
 @RestController
@@ -46,11 +43,11 @@ public class TeamController {
         List<Map<String, Object>> result = memberships.stream().map(m -> {
             var user = userRepository.findById(m.getUserId());
             Map<String, Object> member = new java.util.LinkedHashMap<>();
-            member.put("id",        m.getUserId());
-            member.put("role",      m.getRole());
+            member.put("id", m.getUserId());
+            member.put("role", m.getRole());
             member.put("createdAt", m.getCreatedAt() != null ? m.getCreatedAt().toString() : null);
             user.ifPresent(u -> {
-                member.put("name",  u.getName() != null ? u.getName() : u.getEmail());
+                member.put("name", u.getFullName() != null ? u.getFullName() : u.getEmail());
                 member.put("email", u.getEmail());
             });
             return member;
@@ -61,25 +58,16 @@ public class TeamController {
 
     @PostMapping("/invite")
     @Operation(summary = "Invite a user to the org by email")
-    public ResponseEntity<Void> invite(
-            @Valid @RequestBody InviteRequest req,
-            Authentication auth) {
+    public ResponseEntity<Void> invite(@Valid @RequestBody InviteRequest req, Authentication auth) {
         String orgId = orgId(auth);
         log.info("Team invite: email={} role={} org={}", req.getEmail(), req.getRole(), orgId);
         // In a full impl: send invite email, create pending membership.
         // For now: if user exists add directly; otherwise log for email queue.
         userRepository.findByEmail(req.getEmail()).ifPresent(user -> {
-            boolean alreadyMember = membershipRepository
-                    .findActiveByOrgId(orgId).stream()
-                    .anyMatch(m -> m.getUserId().equals(user.getId()));
+            boolean alreadyMember = membershipRepository.findActiveByOrgId(orgId).stream().anyMatch(m -> m.getUserId().equals(user.getId()));
             if (!alreadyMember) {
-                Membership m = Membership.builder()
-                        .id(java.util.UUID.randomUUID().toString())
-                        .userId(user.getId())
-                        .orgId(orgId)
-                        .role(req.getRole() != null ? req.getRole() : "agent")
-                        .active(true)
-                        .build();
+                Membership m = Membership.builder().id(java.util.UUID.randomUUID().toString()).userId(user.getId()).orgId(orgId)
+                        .role(req.getRole() != null ? req.getRole() : "agent").active(true).build();
                 membershipRepository.save(m);
                 log.info("Added user {} to org {}", user.getId(), orgId);
             }
@@ -89,32 +77,29 @@ public class TeamController {
 
     @DeleteMapping("/members/{id}")
     @Operation(summary = "Remove a member from the org")
-    public ResponseEntity<Void> removeMember(
-            @PathVariable String id,
-            Authentication auth) {
+    public ResponseEntity<Void> removeMember(@PathVariable String id, Authentication auth) {
         String orgId = orgId(auth);
-        membershipRepository.findActiveByOrgId(orgId).stream()
-                .filter(m -> m.getUserId().equals(id))
-                .findFirst()
-                .ifPresent(m -> {
-                    m.setActive(false);
-                    membershipRepository.save(m);
-                    log.info("Removed member {} from org {}", id, orgId);
-                });
+        membershipRepository.findActiveByOrgId(orgId).stream().filter(m -> m.getUserId().equals(id)).findFirst().ifPresent(m -> {
+            m.setActive(false);
+            membershipRepository.save(m);
+            log.info("Removed member {} from org {}", id, orgId);
+        });
         return ResponseEntity.noContent().build();
     }
 
     private String orgId(Authentication auth) {
         if (auth.getPrincipal() instanceof Jwt jwt) {
             String orgId = jwt.getClaimAsString("orgId");
-            if (orgId != null) return orgId;
+            if (orgId != null)
+                return orgId;
         }
         throw new IllegalStateException("No orgId in JWT");
     }
 
     @Data
     public static class InviteRequest {
-        @NotBlank @Email
+        @NotBlank
+        @Email
         private String email;
         private String role; // admin | agent
     }

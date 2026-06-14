@@ -37,7 +37,7 @@ public class Message {
     /**
      * Reference to the parent conversation.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "conversation_id", nullable = false)
     @ToString.Exclude
     private Conversation conversation;

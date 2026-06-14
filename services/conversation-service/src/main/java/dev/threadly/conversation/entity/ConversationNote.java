@@ -36,7 +36,7 @@ public class ConversationNote {
     /**
      * Reference to the conversation this note belongs to.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "conversation_id", nullable = false)
     @ToString.Exclude
     private Conversation conversation;

@@ -1,6 +1,7 @@
 package dev.threadly.knowledge.config;
 
 import io.qdrant.client.QdrantClient;
+import io.qdrant.client.QdrantGrpcClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,13 +39,15 @@ public class QdrantClientConfig {
     log.info("Initializing Qdrant client with host={}, port={}", host, port);
 
     try {
-      // Qdrant client will be initialized with host and port
-      // Implementation depends on Qdrant library version
-      log.warn("Qdrant client initialization - implementation required");
-      log.info("Qdrant client configured for host={}, port={}", host, port);
-      return null;
+      QdrantGrpcClient.Builder builder = QdrantGrpcClient.newBuilder(host, port, false);
+      if (apiKey != null && !apiKey.isBlank()) {
+        builder.withApiKey(apiKey);
+      }
+      QdrantClient client = new QdrantClient(builder.build());
+      log.info("Qdrant client initialized: {}:{}", host, port);
+      return client;
     } catch (Exception e) {
-      log.error("Failed to initialize Qdrant client", e);
+      log.error("Failed to initialize Qdrant client: {}", e.getMessage());
       throw new RuntimeException("Qdrant client initialization failed", e);
     }
   }

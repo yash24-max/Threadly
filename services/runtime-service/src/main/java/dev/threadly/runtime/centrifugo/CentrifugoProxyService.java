@@ -99,8 +99,9 @@ public class CentrifugoProxyService {
 
         String botId     = parts[1];
         String visitorId = parts[2];
-        Object data      = payload.get("data");
-        String text      = data instanceof Map<?,?> m ? String.valueOf(m.getOrDefault("text", "")) : "";
+        Object data   = payload.get("data");
+        Object rawText = (data instanceof Map<?,?> m) ? m.get("text") : null;
+        String text   = rawText != null ? rawText.toString() : "";
 
         if (!text.isBlank()) {
             routeToFlowExecution(botId, visitorId, text);
