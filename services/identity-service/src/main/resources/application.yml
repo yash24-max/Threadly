@@ -107,3 +107,8 @@ auth:
 # Keycloak JWT validation
 keycloak:
   jwks-uri: ${KEYCLOAK_JWKS_URI:http://keycloak:8080/realms/threadly/protocol/openid-connect/certs}
+  base-url: ${KEYCLOAK_BASE_URL:http://keycloak:8080}
+  realm: ${KEYCLOAK_REALM:threadly}
+  admin:
+    client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:threadly-admin}
+    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:threadly-admin-secret}

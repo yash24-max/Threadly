@@ -5,9 +5,9 @@ spring:
     active: dev
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/threadly_conversations
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:threadly}
+    username: ${DB_USER:threadly}
+    password: ${DB_PASSWORD:dev}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -16,6 +16,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: conversation_service
         format_sql: true
         use_sql_comments: true
     show-sql: false
@@ -46,9 +47,9 @@ spring:
     default-property-inclusion: non_null
 
 server:
-  port: 8083
+  port: 3005
   servlet:
-    context-path: /conversation-service
+    context-path: /
   compression:
     enabled: true
     min-response-size: 1024
@@ -80,15 +81,19 @@ resilience4j:
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10000
 
-spring.cloud.consul:
-  enabled: true
-  host: localhost
-  port: 8500
-  discovery:
-    service-name: conversation-service
-    health-check-path: /conversation-service/actuator/health
-    health-check-interval: 10s
-    instance-id: conversation-service-${random.value}
+  cloud:
+    consul:
+      host: ${CONSUL_HOST:localhost}
+      port: ${CONSUL_PORT:8500}
+      discovery:
+        instance-id: conversation-service-${random.uuid}
+        service-name: conversation-service
+        health-check-path: /health
+        health-check-interval: 10s
+        port: 3005
+        tags:
+          - service=conversation-service
+          - version=0.1.0
 
 # Keycloak JWT validation
 keycloak:

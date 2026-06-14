@@ -102,6 +102,15 @@
       "defaultClientScopes": ["web-origins", "profile", "roles", "email"]
     }
   ],
+  "scopeMappings": [],
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "threadly-admin",
+        "roles": ["manage-users", "view-users", "query-users", "manage-realm"]
+      }
+    ]
+  },
   "clientScopeMappings": {},
   "users": [],
   "groups": [],

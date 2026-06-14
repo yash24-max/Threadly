@@ -67,14 +67,17 @@ async function request<T>(
 
   if (!res.ok) {
     let detail = friendlyError(res.status, res.statusText);
-    try {
-      const body = await res.json();
-      // Spring Boot error shape: { message } or { detail } or { error }
-      const raw = body.message ?? body.detail ?? body.error ?? null;
-      if (raw && typeof raw === "string" && !isHttpStatusWord(raw)) {
-        detail = raw;
-      }
-    } catch {}
+    // Only use backend message for client errors (4xx) — never expose raw 5xx internals.
+    if (res.status < 500) {
+      try {
+        const body = await res.json();
+        // Spring Boot error shape: { message } or { detail } or { error }
+        const raw = body.message ?? body.detail ?? body.error ?? null;
+        if (raw && typeof raw === "string" && !isHttpStatusWord(raw)) {
+          detail = raw;
+        }
+      } catch {}
+    }
     throw new ApiError(res.status, detail);
   }
 

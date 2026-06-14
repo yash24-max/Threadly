@@ -7,7 +7,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Bot, MessageSquare, Database, Settings,
   LogOut, ChevronDown, Puzzle, BarChart3, FileText,
-  ChevronLeft, ChevronRight, Bell,
+  ChevronLeft, ChevronRight, Bell, ShieldCheck,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -23,7 +23,8 @@ const nav = [
 ];
 
 const bottomNav = [
-  { href: "/settings",    label: "Settings",   icon: Settings  },
+  { href: "/settings",          label: "Settings",       icon: Settings    },
+  { href: "/settings/sessions", label: "Sessions",       icon: ShieldCheck },
 ];
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────

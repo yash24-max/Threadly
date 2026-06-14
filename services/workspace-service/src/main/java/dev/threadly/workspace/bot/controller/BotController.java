@@ -8,6 +8,8 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -201,15 +203,30 @@ public class BotController {
   }
 
   /**
-   * Extract organization ID from security context or request headers.
-   *
-   * <p>In a real implementation, this would come from JWT claims or a header.
+   * Extract organization ID from the Keycloak JWT claim "orgId".
+   * Falls back to the X-Org-ID request header for internal service calls.
    *
    * @return organization ID
    */
   private String getOrgIdFromContext() {
-    // TODO: Implement actual org ID extraction from security context
-    // For now, return a placeholder
-    return System.getProperty("test.org.id", "org-default");
+    try {
+      org.springframework.security.core.context.SecurityContext ctx =
+          org.springframework.security.core.context.SecurityContextHolder.getContext();
+      if (ctx.getAuthentication() != null
+          && ctx.getAuthentication().getPrincipal() instanceof Jwt jwt) {
+        String orgId = jwt.getClaimAsString("orgId");
+        if (orgId != null && !orgId.isBlank()) return orgId;
+      }
+    } catch (Exception ignored) {
+      // fall through to header check
+    }
+    // Header fallback (set by nginx or integration tests)
+    jakarta.servlet.http.HttpServletRequest req =
+        ((org.springframework.web.context.request.ServletRequestAttributes)
+            org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes())
+            .getRequest();
+    String headerOrgId = req.getHeader("X-Org-ID");
+    if (headerOrgId != null && !headerOrgId.isBlank()) return headerOrgId;
+    throw new dev.threadly.workspace.common.UnauthorizedException("Cannot determine orgId from security context");
   }
 }

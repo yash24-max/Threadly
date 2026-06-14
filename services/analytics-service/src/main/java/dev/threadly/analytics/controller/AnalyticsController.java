@@ -1,8 +1,10 @@
 package dev.threadly.analytics.controller;
 
+import dev.threadly.analytics.common.TenantContext;
 import dev.threadly.analytics.dto.AnalyticsOverviewDto;
 import dev.threadly.analytics.dto.MetricQueryRequest;
 import dev.threadly.analytics.dto.MetricQueryResponse;
+import dev.threadly.analytics.repository.AnalyticsEventRepository;
 import dev.threadly.analytics.service.AnalyticsService;
 import dev.threadly.analytics.service.BotMetricsService;
 import dev.threadly.analytics.service.MetricAggregationService;
@@ -16,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -31,6 +35,7 @@ public class AnalyticsController {
     private final AnalyticsService analyticsService;
     private final BotMetricsService botMetricsService;
     private final MetricAggregationService metricAggregationService;
+    private final AnalyticsEventRepository eventRepository;
 
     /**
      * Get analytics overview for an organization.
@@ -165,21 +170,33 @@ public class AnalyticsController {
      * Returns: { totalConversations, openConversations, handoffConversations, p50ResponseMs }
      */
     @GetMapping("/stats")
-    public ResponseEntity<?> getDashboardStats(
-        @RequestHeader(value = "X-Org-ID", required = false) String orgId
+    public ResponseEntity<Map<String, Object>> getDashboardStats(
+        @RequestHeader(value = "X-Org-ID", required = false) String orgIdHeader
     ) {
         try {
+            // Prefer JWT-based TenantContext; fall back to header for backward compat
+            String orgId = orgIdHeader;
+            try { var tc = TenantContext.getOrgIdOptional(); if (tc != null) orgId = tc.toString(); } catch (Exception ignored) {}
+
             log.debug("Fetching dashboard stats for org: {}", orgId);
-            // Return a stats shape compatible with frontend DashboardStats type.
-            // Values are live totals; replace with real queries once data pipeline is active.
-            java.util.Map<String, Object> stats = new java.util.LinkedHashMap<>();
-            stats.put("totalConversations", 0);
-            stats.put("openConversations", 0);
-            stats.put("handoffConversations", 0);
-            stats.put("p50ResponseMs", 0);
+
+            Instant epoch = Instant.EPOCH;
+            Instant now   = Instant.now();
+
+            long total     = eventRepository.countByOrgIdAndTimeRange(orgId, epoch, now);
+            long open      = eventRepository.countByEventType(orgId, "CONVERSATION_STARTED", epoch, now);
+            long handedOff = eventRepository.countByEventType(orgId, "HANDOFF_INITIATED",    epoch, now);
+            long closed    = eventRepository.countByEventType(orgId, "CONVERSATION_ENDED",   epoch, now);
+
+            Map<String, Object> stats = new LinkedHashMap<>();
+            stats.put("totalConversations",   total);
+            stats.put("openConversations",    Math.max(0, open - handedOff - closed));
+            stats.put("handoffConversations", handedOff);
+            stats.put("closedConversations",  closed);
+            stats.put("p50ResponseMs",        0L); // computed by ML pipeline in v2
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
-            log.error("Error fetching dashboard stats for org: {}", orgId, e);
+            log.error("Error fetching dashboard stats: {}", e.getMessage());
             return ResponseEntity.status(500).build();
         }
     }

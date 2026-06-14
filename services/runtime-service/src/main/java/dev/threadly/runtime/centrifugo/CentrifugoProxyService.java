@@ -1,6 +1,13 @@
 package dev.threadly.runtime.centrifugo;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import dev.threadly.runtime.feign.FlowServiceClient;
+import dev.threadly.runtime.model.Session;
+import dev.threadly.runtime.service.RuntimeExecutor;
+import dev.threadly.runtime.service.SessionService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -16,7 +23,12 @@ import java.util.Map;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class CentrifugoProxyService {
+
+    private final RuntimeExecutor runtimeExecutor;
+    private final SessionService   sessionService;
+    private final FlowServiceClient flowServiceClient;
 
     /**
      * Handle connect proxy.
@@ -73,14 +85,67 @@ public class CentrifugoProxyService {
 
     /**
      * Handle publish proxy.
-     * Widget visitors can only publish to their own widget channel.
-     * Dashboard users cannot publish directly (server-only publishing).
+     * Widget visitors can publish to widget:{botId}:{visitorId}.
+     * After allowing, asynchronously routes the message to RuntimeExecutor.
      */
     public Map<String, Object> handlePublish(String userId, String channel, Map<String, Object> payload) {
-        if (channel != null && channel.startsWith("widget:") && userId != null && userId.startsWith("visitor:")) {
-            return allowed();
+        if (channel == null || !channel.startsWith("widget:") || userId == null || !userId.startsWith("visitor:")) {
+            return denied("publish not allowed");
         }
-        return denied("publish not allowed");
+
+        // Parse channel: widget:{botId}:{visitorId}
+        String[] parts = channel.split(":");
+        if (parts.length < 3) return denied("invalid channel format");
+
+        String botId     = parts[1];
+        String visitorId = parts[2];
+        Object data      = payload.get("data");
+        String text      = data instanceof Map<?,?> m ? String.valueOf(m.getOrDefault("text", "")) : "";
+
+        if (!text.isBlank()) {
+            routeToFlowExecution(botId, visitorId, text);
+        }
+
+        return allowed();
+    }
+
+    /**
+     * Async: get-or-create session, fetch active flow, execute.
+     */
+    @Async
+    protected void routeToFlowExecution(String botId, String visitorId, String text) {
+        try {
+            // 1. Get or create a session for this visitor
+            Session session = sessionService.getVisitorSessions(visitorId).stream()
+                    .filter(s -> botId.equals(s.getBotId()))
+                    .findFirst()
+                    .orElseGet(() -> sessionService.createSession(botId, null, visitorId));
+
+            // 2. Fetch active flow from flow-service (no auth needed between internal services)
+            JsonNode flowDefinition;
+            try {
+                flowDefinition = flowServiceClient.getActiveFlow(botId, "Bearer internal");
+            } catch (Exception e) {
+                log.warn("Could not fetch active flow for bot {}: {}", botId, e.getMessage());
+                return;
+            }
+
+            if (flowDefinition == null) {
+                log.warn("No active flow found for bot {}", botId);
+                return;
+            }
+
+            // 3. Route message to runtime executor
+            String sessionId = session.getId();
+            if (session.getState() == Session.SessionState.PAUSED) {
+                runtimeExecutor.resumeExecution(sessionId, text, flowDefinition);
+            } else {
+                runtimeExecutor.executeFlow(sessionId, flowDefinition);
+            }
+
+        } catch (Exception e) {
+            log.error("Flow execution error for bot={} visitor={}: {}", botId, visitorId, e.getMessage(), e);
+        }
     }
 
     // ── helpers ────────────────────────────────────────────────────────────

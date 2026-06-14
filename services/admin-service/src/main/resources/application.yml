@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: admin-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:threadly}
+    username: ${DB_USER:threadly}
+    password: ${DB_PASSWORD:dev}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  cloud:
+    consul:
+      host: ${CONSUL_HOST:localhost}
+      port: ${CONSUL_PORT:8500}
+      discovery:
+        instance-id: admin-service-${random.uuid}
+        service-name: admin-service
+        health-check-path: /health
+        health-check-interval: 10s
+        port: 3010
+        tags:
+          - service=admin
+          - version=0.1.0
+
+server:
+  port: 3010
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    dev.threadly: DEBUG
+
+# Keycloak JWT validation
+keycloak:
+  jwks-uri: ${KEYCLOAK_JWKS_URI:http://keycloak:8080/realms/threadly/protocol/openid-connect/certs}
+  base-url: ${KEYCLOAK_BASE_URL:http://keycloak:8080}
+  realm: ${KEYCLOAK_REALM:threadly}
+
+# Downstream service URLs (used by Feign clients when Consul not available)
+services:
+  identity:
+    url: ${IDENTITY_SERVICE_URL:http://localhost:3001}
